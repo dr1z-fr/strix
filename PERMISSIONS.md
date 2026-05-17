@@ -145,6 +145,18 @@ Tout nouvel opérateur (créé par le `cmd`) doit changer son code d'accès à s
 - **Op créée / annulée** → embed dans le canal `OPS` + ping du rôle `<@&1432712716589465763>`.
 - **Absence posée / retirée / terminée** → embed dans le canal `ABSENCES` (sans ping).
 - Les "fins d'absence" sont notifiées par un cron quotidien à 06:00 UTC.
+- **Formation créée / annulée / validée** → embed dans le canal `FORMATIONS`. La validation liste les opérateurs nouvellement certifiés.
+
+### Formations & Certifications
+
+Les **certifications** (CQB, MED, SNI, …) sont un **catalogue** géré par le `cmd`. Pour chaque certification, le `cmd` désigne une liste de **formateurs habilités** (peu importe leur grade).
+
+- Seul un formateur habilité (ou le `cmd`) peut **créer une formation** ciblant cette certification.
+- Le formateur gère le roster (qui est inscrit / présent) comme pour une opération.
+- Les opérateurs peuvent s'**inscrire eux-mêmes** à une formation tant qu'elle n'est pas validée.
+- Quand le formateur **valide la formation**, tous les opérateurs marqués présents reçoivent automatiquement la certification.
+- La validation est **réversible** : si le formateur annule, les certifications délivrées par cette formation sont révoquées.
+- Le `cmd` peut **révoquer manuellement** une certification à tout moment (chip × dans le catalogue).
 
 ---
 
@@ -160,7 +172,15 @@ Tout nouvel opérateur (créé par le `cmd`) doit changer son code d'accès à s
 | Absence pour autrui | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Gérer membres de SA spé (resp/adj) | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | ✅ |
 | Créer/supprimer une spé | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| S'inscrire à une formation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Créer/valider une formation (par certif) | ⁶ | ⁶ | ⁶ | ⁶ | ⁶ | ✅ |
+| Créer/supprimer une certification | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Révoquer une certification d'un opérateur | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Créer/éditer/supprimer un opérateur | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+---
+
+⁶ Uniquement si l'opérateur a été désigné **formateur habilité** sur la certification ciblée par le `cmd`, peu importe son grade.
 
 ---
 

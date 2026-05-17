@@ -75,6 +75,45 @@ CREATE TABLE IF NOT EXISTS trainings (
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- =========================================================
+-- CERTIFICATIONS & FORMATIONS
+-- =========================================================
+CREATE TABLE IF NOT EXISTS certifications (
+  id           TEXT PRIMARY KEY,
+  code         TEXT NOT NULL,            -- ex: CQB, MED, SNI
+  name         TEXT NOT NULL,            -- ex: Close Quarter Battle
+  description  TEXT,
+  trainers     JSONB NOT NULL DEFAULT '[]'::jsonb,  -- [userId, ...]
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS formations (
+  id            TEXT PRIMARY KEY,
+  cert_id       TEXT REFERENCES certifications(id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  date          TIMESTAMPTZ NOT NULL,
+  location      TEXT,
+  description   TEXT,
+  attendees     JSONB NOT NULL DEFAULT '{}'::jsonb,  -- { userId: bool }
+  validated     BOOLEAN NOT NULL DEFAULT FALSE,
+  validated_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+  validated_at  TIMESTAMPTZ,
+  created_by    TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS formations_cert_idx ON formations (cert_id);
+CREATE INDEX IF NOT EXISTS formations_date_idx ON formations (date DESC);
+
+CREATE TABLE IF NOT EXISTS cert_holders (
+  cert_id      TEXT REFERENCES certifications(id) ON DELETE CASCADE,
+  user_id      TEXT REFERENCES users(id) ON DELETE CASCADE,
+  awarded_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  awarded_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  formation_id TEXT REFERENCES formations(id) ON DELETE SET NULL,
+  PRIMARY KEY (cert_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS cert_holders_user_idx ON cert_holders (user_id);
+
 CREATE TABLE IF NOT EXISTS log (
   id    BIGSERIAL PRIMARY KEY,
   ts    TIMESTAMPTZ NOT NULL DEFAULT NOW(),

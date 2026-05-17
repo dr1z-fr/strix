@@ -452,6 +452,12 @@ function renderPersonnelStatsTable() {
       </td>
       <td>${g ? g.label : '—'}</td>
       <td><div class="spec-cell">${specs}</div></td>
+      <td><div class="spec-cell">${(() => {
+        const cs = userCerts(u.id);
+        return cs.length === 0
+          ? '<span style="color:var(--dim-2)">—</span>'
+          : cs.map(({ cert }) => `<span class="trainer-chip" style="font-family:var(--mono);font-weight:600;" title="${cert.name}">${cert.code}</span>`).join(' ');
+      })()}</div></td>
       <td style="text-align:center;font-family:var(--mono);">${s.engaged}</td>
       <td style="text-align:center;font-family:var(--mono);color:${s.validated > 0 ? 'var(--ok)' : 'var(--dim)'};font-weight:600;">${s.validated}</td>
       <td style="text-align:center;font-family:var(--mono);">${s.trainings}</td>
@@ -1036,6 +1042,455 @@ function renderOverview() {
 }
 
 // =========================================================
+//                  FORMATIONS & CERTIFICATIONS
+// =========================================================
+function isTrainerOf(cert) {
+  if (!cert) return false;
+  if (isCmd) return true;
+  return Array.isArray(cert.trainers) && cert.trainers.includes(me.id);
+}
+function trainableCerts() {
+  return db.certifications.all().filter(isTrainerOf);
+}
+function userCerts(userId) {
+  return db.certHolders.forUser(userId)
+    .map(h => ({ holder: h, cert: db.certifications.find(h.certId) }))
+    .filter(x => x.cert)
+    .sort((a, b) => a.cert.code.localeCompare(b.cert.code));
+}
+
+// ---- My certifications ----
+function renderMyCerts() {
+  const list = $('myCertsList');
+  const mine = userCerts(me.id);
+  $('myCertsCount').textContent = mine.length;
+  if (mine.length === 0) {
+    list.innerHTML = '<div class="empty-state">Aucune certification obtenue à ce jour.</div>';
+    return;
+  }
+  list.innerHTML = mine.map(({ holder, cert }) => {
+    const date = new Date(holder.awardedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+    const awarder = holder.awardedBy ? userById(holder.awardedBy) : null;
+    return `<div class="cert-card">
+      <div class="cert-code">${cert.code}</div>
+      <div class="cert-info">
+        <div class="cert-name">${cert.name}</div>
+        <div class="cert-meta">Obtenue le ${date}${awarder ? ` · validée par ${awarder.name}` : ''}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ---- Catalog ----
+function renderCertsCatalog() {
+  const list = $('certsList');
+  const certs = db.certifications.all().sort((a, b) => a.code.localeCompare(b.code));
+  $('newCertBtn').style.display = isCmd ? 'inline-flex' : 'none';
+  if (certs.length === 0) {
+    list.innerHTML = '<div class="empty-state">Aucune certification définie. Le commandement peut en créer dans le catalogue.</div>';
+    return;
+  }
+  list.innerHTML = certs.map(c => {
+    const trainers = (c.trainers || []).map(uid => {
+      const u = userById(uid);
+      return u ? `<span class="trainer-chip">${u.name}</span>` : '';
+    }).join('');
+    const holders = db.certHolders.forCert(c.id);
+    const canTrain = isTrainerOf(c);
+    return `<div class="cert-row">
+      <div class="cert-row-head">
+        <div class="cert-code">${c.code}</div>
+        <div class="cert-row-title">
+          <div class="cert-name">${c.name}</div>
+          ${c.description ? `<div class="cert-desc">${c.description}</div>` : ''}
+        </div>
+        <div class="cert-row-actions">
+          ${canTrain ? '<span class="perm-on">✓ Vous formez</span>' : ''}
+          ${isCmd ? `
+            <button class="btn-ghost btn-sm" data-edit-cert="${c.id}">Éditer</button>
+            <button class="btn-danger btn-sm" data-del-cert="${c.id}">Supprimer</button>` : ''}
+        </div>
+      </div>
+      <div class="cert-row-body">
+        <div class="cert-section">
+          <span class="cert-section-label">Formateurs (${(c.trainers || []).length})</span>
+          <div class="cert-chips">${trainers || '<span style="color:var(--dim)">— aucun —</span>'}</div>
+        </div>
+        <div class="cert-section">
+          <span class="cert-section-label">Détenteurs (${holders.length})</span>
+          <div class="cert-chips">${holders.length === 0 ? '<span style="color:var(--dim)">— aucun —</span>' :
+            holders.map(h => {
+              const u = userById(h.userId);
+              return `<span class="holder-chip">
+                ${u ? u.name : h.userId}
+                ${isCmd ? `<button class="chip-x" data-revoke-cert="${c.id}" data-revoke-user="${h.userId}" title="Révoquer">×</button>` : ''}
+              </span>`;
+            }).join('')}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Wire up actions
+  list.querySelectorAll('[data-edit-cert]').forEach(b => {
+    b.addEventListener('click', () => editCert(b.dataset.editCert));
+  });
+  list.querySelectorAll('[data-del-cert]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const c = db.certifications.find(b.dataset.delCert);
+      if (!c) return;
+      if (!await confirmDialog('Suppression',
+        `Supprimer la certification ${c.code} ?\n\nToutes les formations associées et les attestations délivrées seront effacées.`)) return;
+      await db.certifications.delete(c.id);
+      logAction(`Certification supprimée — ${c.code}`, 'CERT');
+      toast(`${c.code} supprimée`);
+    });
+  });
+  list.querySelectorAll('[data-revoke-cert]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const certId = b.dataset.revokeCert;
+      const userId = b.dataset.revokeUser;
+      const c = db.certifications.find(certId);
+      const u = userById(userId);
+      if (!await confirmDialog('Révocation', `Retirer la certification ${c?.code} à ${u?.name || userId} ?`)) return;
+      await db.certHolders.revoke(certId, userId);
+      logAction(`Certification ${c?.code} révoquée — ${u?.name || userId}`, 'CERT');
+      toast('Certification révoquée');
+    });
+  });
+}
+
+// ---- Cert form (CMD) ----
+function populateTrainerSelect(selectEl, currentTrainerIds = []) {
+  const users = db.users.all().sort((a, b) => (gradeOf(a)?.tier || 99) - (gradeOf(b)?.tier || 99));
+  const set = new Set(currentTrainerIds);
+  selectEl.innerHTML = users.map(u => {
+    const g = gradeOf(u);
+    return `<option value="${u.id}" ${set.has(u.id) ? 'selected' : ''}>${u.id} — ${g ? g.short : ''} · ${u.name}</option>`;
+  }).join('');
+}
+function resetCertForm() {
+  $('certEditId').value = '';
+  $('certCode').value = '';
+  $('certName').value = '';
+  $('certDesc').value = '';
+  populateTrainerSelect($('certTrainers'), []);
+  $('certFormTitle').textContent = 'Nouvelle certification';
+  $('certFormPanel').style.display = 'none';
+}
+function editCert(id) {
+  const c = db.certifications.find(id);
+  if (!c) return;
+  $('certEditId').value = c.id;
+  $('certCode').value = c.code;
+  $('certName').value = c.name;
+  $('certDesc').value = c.description || '';
+  populateTrainerSelect($('certTrainers'), c.trainers || []);
+  $('certFormTitle').textContent = `Édition — ${c.code}`;
+  $('certFormPanel').style.display = '';
+  $('certFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+if ($('newCertBtn')) {
+  $('newCertBtn').addEventListener('click', () => {
+    resetCertForm();
+    $('certFormPanel').style.display = '';
+    $('certFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+if ($('certCancelBtn')) {
+  $('certCancelBtn').addEventListener('click', resetCertForm);
+}
+if ($('certForm')) {
+  $('certForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!isCmd) return;
+    const editId = $('certEditId').value;
+    const code = $('certCode').value.trim().toUpperCase();
+    const name = $('certName').value.trim();
+    const description = $('certDesc').value.trim();
+    const trainers = Array.from($('certTrainers').selectedOptions).map(o => o.value);
+    if (!code || !name) { toast('Code et nom requis'); return; }
+
+    if (editId) {
+      await db.certifications.update(editId, { code, name, description, trainers });
+      logAction(`Certification mise à jour — ${code}`, 'CERT');
+      toast(`${code} mise à jour`);
+    } else {
+      await db.certifications.insert({ id: db.uid(), code, name, description, trainers });
+      logAction(`Certification créée — ${code}`, 'CERT');
+      toast(`${code} créée`);
+    }
+    resetCertForm();
+  });
+}
+
+// ---- Formation form (trainers) ----
+function populateFormationCertSelect() {
+  const sel = $('formationCert');
+  const certs = trainableCerts().sort((a, b) => a.code.localeCompare(b.code));
+  if (certs.length === 0) {
+    sel.innerHTML = '<option value="">— aucune certif accessible —</option>';
+    return;
+  }
+  const cur = sel.value;
+  sel.innerHTML = certs.map(c =>
+    `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${c.code} — ${c.name}</option>`
+  ).join('');
+}
+function resetFormationForm() {
+  $('formationEditId').value = '';
+  $('formationTitle').value = '';
+  $('formationDate').value = '';
+  $('formationLocation').value = '';
+  $('formationDesc').value = '';
+  $('formationFormTitle').textContent = 'Programmer une formation';
+  $('formationCancelBtn').style.display = 'none';
+  populateFormationCertSelect();
+}
+function editFormation(id) {
+  const f = db.formations.find(id);
+  if (!f) return;
+  $('formationEditId').value = f.id;
+  populateFormationCertSelect();
+  $('formationCert').value = f.certId;
+  $('formationTitle').value = f.title;
+  // datetime-local needs YYYY-MM-DDTHH:mm in local time
+  const d = new Date(f.date);
+  const isoLocal = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  $('formationDate').value = isoLocal;
+  $('formationLocation').value = f.location || '';
+  $('formationDesc').value = f.description || '';
+  $('formationFormTitle').textContent = `Édition — ${f.title}`;
+  $('formationCancelBtn').style.display = '';
+  $('formationFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+if ($('formationCancelBtn')) {
+  $('formationCancelBtn').addEventListener('click', resetFormationForm);
+}
+if ($('formationForm')) {
+  $('formationForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editId = $('formationEditId').value;
+    const certId = $('formationCert').value;
+    const cert = db.certifications.find(certId);
+    if (!cert) { toast('Certification invalide'); return; }
+    if (!isTrainerOf(cert)) { toast('Tu n\'es pas formateur sur cette certification'); return; }
+    const title = $('formationTitle').value.trim();
+    const date = new Date($('formationDate').value).toISOString();
+    const location = $('formationLocation').value.trim();
+    const description = $('formationDesc').value.trim();
+    if (!title) { toast('Intitulé requis'); return; }
+
+    if (editId) {
+      await db.formations.update(editId, { title, date, location, description });
+      logAction(`Formation modifiée — ${title}`, 'FORM');
+      toast('Formation mise à jour');
+    } else {
+      await db.formations.insert({
+        id: db.uid(), certId, title, date, location, description,
+        attendees: {}, validated: false,
+      });
+      logAction(`Formation programmée — ${title} (${cert.code})`, 'FORM');
+      toast(`Formation « ${title} » programmée`);
+    }
+    resetFormationForm();
+  });
+}
+
+// ---- Formations list ----
+function renderFormations() {
+  // Visibility: form panel only if user can train at least one cert
+  const canTrainSomething = trainableCerts().length > 0;
+  $('formationFormPanel').style.display = canTrainSomething ? '' : 'none';
+  populateFormationCertSelect();
+
+  const list = $('formationsList');
+  const formations = db.formations.all()
+    .sort((a, b) => new Date(b.date) - new Date(a.date)); // most recent first
+  $('formationsCount').textContent = formations.length;
+
+  if (formations.length === 0) {
+    list.innerHTML = '<div class="empty-state">Aucune formation programmée.</div>';
+    return;
+  }
+
+  list.innerHTML = formations.map(f => {
+    const cert = db.certifications.find(f.certId);
+    const canTrain = isTrainerOf(cert);
+    const isPast = new Date(f.date) < new Date();
+    const att = f.attendees || {};
+    const presentIds = Object.keys(att).filter(k => att[k]);
+    const meChecked = !!att[me.id];
+
+    // Roster: editable for trainers, otherwise only the present list
+    let rosterHTML = '';
+    if (canTrain) {
+      const activeUsers = db.users.where(u => u.status === 'actif')
+        .sort((a, b) => (gradeOf(a)?.tier || 99) - (gradeOf(b)?.tier || 99));
+      rosterHTML = activeUsers.length === 0
+        ? '<li class="empty-state">Aucun opérateur actif.</li>'
+        : activeUsers.map(u => {
+            const g = gradeOf(u);
+            const checked = !!att[u.id];
+            const hasIt = cert ? db.certHolders.has(u.id, cert.id) : false;
+            return `<li class="roster-editable ${checked ? 'is-checked' : ''}">
+              <label class="roster-toggle">
+                <input type="checkbox" data-form-roster="${f.id}" data-uid="${u.id}" ${checked ? 'checked' : ''} ${f.validated ? 'disabled' : ''}/>
+                <div class="roster-info">
+                  <div class="mini-avatar">${initials(u.name)}</div>
+                  <div>
+                    <div class="op-id">${u.id} <span style="color:var(--dim);font-size:10px">· ${g ? g.short : '—'}</span>
+                      ${hasIt ? '<span class="perm-on" style="font-size:10px;margin-left:6px;">✓ déjà certifié</span>' : ''}
+                    </div>
+                    <div class="op-name-small">${u.name}</div>
+                  </div>
+                </div>
+              </label>
+            </li>`;
+          }).join('');
+    } else {
+      rosterHTML = presentIds.length === 0
+        ? '<li class="empty-state">Aucun inscrit pour le moment.</li>'
+        : presentIds
+            .map(id => ({ id, u: userById(id) }))
+            .sort((a, b) => {
+              const ga = a.u && gradeOf(a.u); const gb = b.u && gradeOf(b.u);
+              return (ga ? ga.tier : 99) - (gb ? gb.tier : 99);
+            })
+            .map(({ id, u }) => {
+              const g = u ? gradeOf(u) : null;
+              const cls = f.validated ? 'confirm-ok' : 'confirm-pending';
+              const txt = f.validated ? 'Certifié' : 'Inscrit';
+              return `<li>
+                <div class="roster-info">
+                  <div class="mini-avatar">${u ? initials(u.name) : '?'}</div>
+                  <div>
+                    <div class="op-id">${id} <span style="color:var(--dim);font-size:10px">· ${g ? g.short : '—'}</span></div>
+                    <div class="op-name-small">${u ? u.name : '— inconnu —'}</div>
+                  </div>
+                </div>
+                <span class="${cls}">${txt}</span>
+              </li>`;
+            }).join('');
+    }
+
+    // Self-toggle (everyone, except if validated or trainer manages roster)
+    const selfToggle = !f.validated && !canTrain ? `
+      <label class="self-toggle">
+        <input type="checkbox" data-form-self="${f.id}" ${meChecked ? 'checked' : ''}/>
+        <span>${meChecked ? '✓ Inscrit·e' : 'M\'inscrire'}</span>
+      </label>` : '';
+
+    const validationBtns = canTrain && !f.validated ? `
+      <button class="btn-primary btn-sm" data-form-validate="${f.id}">
+        Valider la formation (délivrer ${cert?.code || '?'})
+      </button>` : f.validated && canTrain ? `
+      <button class="btn-ghost btn-sm" data-form-unvalidate="${f.id}">Annuler la validation</button>` : '';
+
+    const editBtn = canTrain && !f.validated ? `
+      <button class="btn-ghost btn-sm" data-form-edit="${f.id}">Éditer</button>` : '';
+    const delBtn = (canTrain || f.createdBy === me.id) ? `
+      <button class="btn-danger btn-sm" data-form-delete="${f.id}">Supprimer</button>` : '';
+
+    return `<article class="op-card ${f.validated ? 'is-validated' : ''} ${isPast && !f.validated ? 'is-past' : ''}">
+      <header class="op-card-head">
+        <div class="op-meta">
+          <span class="op-cert-pill">${cert ? cert.code : '?'}</span>
+          <span class="op-date">${fmtDateTime(f.date)}</span>
+          ${f.location ? `<span class="op-loc">${f.location}</span>` : ''}
+          ${f.validated ? '<span class="op-badge ok">✓ Validée</span>' : ''}
+          ${isPast && !f.validated ? '<span class="op-badge warn">⏱ À valider</span>' : ''}
+        </div>
+        <h4>${f.title}</h4>
+        ${cert ? `<div class="op-subtitle">${cert.name}</div>` : ''}
+        ${f.description ? `<p class="op-brief">${f.description}</p>` : ''}
+      </header>
+      <div class="op-roster">
+        <div class="op-roster-head">
+          <strong>${canTrain ? 'Inscrire les opérateurs présents' : 'Participants'}</strong>
+          <span class="muted">${presentIds.length} inscrit${presentIds.length > 1 ? 's' : ''}</span>
+        </div>
+        <ul>${rosterHTML}</ul>
+      </div>
+      <footer class="op-actions">
+        ${selfToggle}
+        ${validationBtns}
+        ${editBtn}
+        ${delBtn}
+      </footer>
+    </article>`;
+  }).join('');
+
+  // ---- Wire actions ----
+  list.querySelectorAll('[data-form-self]').forEach(cb => {
+    cb.addEventListener('change', async (e) => {
+      const fid = e.target.dataset.formSelf;
+      const f = db.formations.find(fid);
+      if (!f) return;
+      const att = { ...(f.attendees || {}) };
+      if (e.target.checked) att[me.id] = true; else delete att[me.id];
+      await db.formations.update(fid, { attendees: att });
+      logAction(`${e.target.checked ? 'Inscription' : 'Désinscription'} formation — ${f.title}`, 'FORM');
+    });
+  });
+  list.querySelectorAll('[data-form-roster]').forEach(cb => {
+    cb.addEventListener('change', async (e) => {
+      const fid = e.target.dataset.formRoster;
+      const uid = e.target.dataset.uid;
+      const f = db.formations.find(fid);
+      if (!f) return;
+      const att = { ...(f.attendees || {}) };
+      if (e.target.checked) att[uid] = true; else delete att[uid];
+      await db.formations.update(fid, { attendees: att });
+      const u = userById(uid);
+      logAction(`${e.target.checked ? 'Ajouté' : 'Retiré'} de la formation ${f.title} — ${u ? u.name : uid}`, 'FORM');
+    });
+  });
+  list.querySelectorAll('[data-form-validate]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const f = db.formations.find(b.dataset.formValidate);
+      const cert = db.certifications.find(f.certId);
+      const present = Object.entries(f.attendees || {}).filter(([_, v]) => v).length;
+      if (!await confirmDialog('Validation',
+        `Valider cette formation ?\n\n${present} opérateur(s) recevront la certification ${cert?.code || '?'}.\n\nCette action est réversible.`)) return;
+      await db.formations.update(f.id, { validated: true });
+      // Optimistically add holders to local cache (server has already done it)
+      Object.entries(f.attendees || {}).filter(([_, v]) => v).forEach(([uid]) => {
+        db.certHolders.addLocal({
+          certId: cert.id, userId: uid,
+          awardedAt: Date.now(), awardedBy: me.id, formationId: f.id,
+        });
+      });
+      logAction(`Formation validée — ${f.title} (+${present} ${cert?.code || '?'})`, 'CERT');
+      toast(`${present} opérateur(s) certifié(s) ${cert?.code || ''}`);
+    });
+  });
+  list.querySelectorAll('[data-form-unvalidate]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const f = db.formations.find(b.dataset.formUnvalidate);
+      if (!await confirmDialog('Annulation', 'Annuler la validation et révoquer les certifications délivrées par cette formation ?')) return;
+      await db.formations.update(f.id, { validated: false });
+      db.certHolders.removeByFormation(f.id);
+      logAction(`Validation annulée — ${f.title}`, 'CERT');
+      toast('Certifications révoquées');
+    });
+  });
+  list.querySelectorAll('[data-form-edit]').forEach(b => {
+    b.addEventListener('click', () => editFormation(b.dataset.formEdit));
+  });
+  list.querySelectorAll('[data-form-delete]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const f = db.formations.find(b.dataset.formDelete);
+      if (!await confirmDialog('Suppression', `Supprimer la formation « ${f.title} » ?`)) return;
+      await db.formations.delete(f.id);
+      logAction(`Formation supprimée — ${f.title}`, 'FORM');
+      toast('Formation supprimée');
+    });
+  });
+}
+
+// =========================================================
 //                       MASTER RENDER
 // =========================================================
 function renderAll() {
@@ -1047,6 +1502,9 @@ function renderAll() {
   renderPersonnelStatsTable();
   renderSpecsForm();
   renderSpecs();
+  renderMyCerts();
+  renderCertsCatalog();
+  renderFormations();
   if (isCmd) renderUserAdmin();
   renderOverview();
 }

@@ -558,6 +558,82 @@ tr.row-locked { background: rgba(255,255,255,0.02); }
 tr.row-locked td { color: var(--dim); }
 tr.row-locked .mono { color: var(--dim-2); }
 
+/* =========================================================
+   FORMATIONS & CERTIFICATIONS
+   ========================================================= */
+.cert-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px; padding: 16px;
+}
+.cert-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px 16px;
+}
+.cert-code {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 56px; height: 56px; padding: 0 10px;
+  background: var(--bg-1); border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono); font-weight: 700; font-size: 14px;
+  letter-spacing: 0.08em; color: var(--fg);
+}
+.cert-info { flex: 1; min-width: 0; }
+.cert-name { font-weight: 600; font-size: 13px; color: var(--fg); margin-bottom: 2px; }
+.cert-meta { font-size: 11px; color: var(--dim); }
+.cert-desc { font-size: 11.5px; color: var(--dim); margin-top: 4px; line-height: 1.4; }
+
+.cert-catalog { padding: 8px 0; }
+.cert-row {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 18px;
+}
+.cert-row:last-child { border-bottom: none; }
+.cert-row-head {
+  display: flex; align-items: flex-start; gap: 14px;
+  margin-bottom: 10px;
+}
+.cert-row-title { flex: 1; min-width: 0; }
+.cert-row-actions { display: flex; gap: 6px; align-items: center; }
+.cert-row-body {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  margin-left: 70px;
+}
+@media (max-width: 720px) {
+  .cert-row-body { grid-template-columns: 1fr; margin-left: 0; }
+}
+.cert-section-label {
+  display: block; font-size: 10.5px; color: var(--dim);
+  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;
+}
+.cert-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.trainer-chip, .holder-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--bg-1); border: 1px solid var(--border);
+  border-radius: 12px; padding: 3px 10px;
+  font-size: 11px; color: var(--fg-2);
+}
+.holder-chip { background: rgba(111,207,151,0.08); border-color: rgba(111,207,151,0.25); color: var(--ok); }
+.chip-x {
+  background: none; border: none; color: var(--dim);
+  cursor: pointer; font-size: 14px; line-height: 1; padding: 0;
+  margin-left: 2px;
+}
+.chip-x:hover { color: var(--danger); }
+
+/* Cert pill in formation card */
+.op-cert-pill {
+  display: inline-flex; align-items: center;
+  background: var(--bg-1); border: 1px solid var(--fg-2);
+  border-radius: 4px; padding: 2px 8px;
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; color: var(--fg);
+}
+.op-subtitle { font-size: 12px; color: var(--dim); margin-top: 2px; }
+.op-card.is-validated { border-color: rgba(111,207,151,0.3); }
+.op-card.is-past { opacity: 0.85; }
+.op-badge.warn { background: rgba(224,179,65,0.15); color: var(--amber, #E0B341); border-color: rgba(224,179,65,0.3); }
+
 /* Forced password modal */
 .modal-pwd { min-width: 380px; max-width: 92vw; }
 .modal-pwd input[type="password"] {

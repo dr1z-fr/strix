@@ -62,6 +62,9 @@
     session_invalid: 'Session invalide',
     unauthorized: 'Non autorisé',
     password_too_short: 'Mot de passe trop court (4 caractères minimum)',
+    forbidden_not_trainer: 'Réservé aux formateurs de cette certification',
+    formation_locked: 'Formation déjà validée — verrouillée',
+    invalid_record: 'Données invalides',
   };
   function humanError(code) { return ERROR_MAP[code] || code; }
 
@@ -95,6 +98,9 @@
     absences: [],
     specializations: [],
     trainings: [],
+    certifications: [],
+    formations: [],
+    certHolders: [],
     log: [],
   };
 
@@ -179,6 +185,40 @@
   const absences  = makeCollection('absences',        'absences');
   const specs     = makeCollection('specializations', 'specs');
   const trainings = makeCollection('trainings',       'trainings');
+  const certifications = makeCollection('certifications', 'certs');
+  const formations     = makeCollection('formations',     'formations');
+
+  // certHolders: read-only on client (mutations are side-effects of formation validation)
+  const certHolders = {
+    all: () => cache.certHolders.slice(),
+    where: pred => cache.certHolders.filter(pred),
+    forUser: (userId) => cache.certHolders.filter(h => h.userId === userId),
+    forCert: (certId) => cache.certHolders.filter(h => h.certId === certId),
+    has: (userId, certId) => cache.certHolders.some(h => h.userId === userId && h.certId === certId),
+    setAll: list => { cache.certHolders = list.slice(); triggerRender(); },
+    async revoke(certId, userId) {
+      const i = cache.certHolders.findIndex(h => h.certId === certId && h.userId === userId);
+      const prev = i !== -1 ? cache.certHolders[i] : null;
+      if (prev) { cache.certHolders.splice(i, 1); triggerRender(); }
+      try { await api('certs.revoke', { certId, userId }); }
+      catch (err) {
+        if (prev) { cache.certHolders.splice(i, 0, prev); triggerRender(); }
+        window.STRIX?.toast?.(humanError(err.message));
+        throw err;
+      }
+    },
+    // Used after a formation validation: server has awarded; we re-fetch via init? No, mutate optimistically.
+    addLocal(holder) {
+      if (!cache.certHolders.some(h => h.certId === holder.certId && h.userId === holder.userId)) {
+        cache.certHolders.unshift(holder);
+        triggerRender();
+      }
+    },
+    removeByFormation(formationId) {
+      cache.certHolders = cache.certHolders.filter(h => h.formationId !== formationId);
+      triggerRender();
+    },
+  };
 
   // log: insert-only, optimistic, no rollback semantics
   const log = {
@@ -206,6 +246,9 @@
       cache.absences        = data.absences || [];
       cache.specializations = data.specializations || [];
       cache.trainings       = data.trainings || [];
+      cache.certifications  = data.certifications || [];
+      cache.formations      = data.formations || [];
+      cache.certHolders     = data.certHolders || [];
       cache.log             = data.log || [];
       return true;
     } catch (err) {
@@ -233,6 +276,9 @@
       cache.absences = [];
       cache.specializations = [];
       cache.trainings = [];
+      cache.certifications = [];
+      cache.formations = [];
+      cache.certHolders = [];
       cache.log = [];
     },
     me() { return cache.me; },
@@ -244,7 +290,11 @@
   window.STRIX.db = {
     users, ops, absences,
     specializations: specs,
-    trainings, log,
+    trainings,
+    certifications,
+    formations,
+    certHolders,
+    log,
     auth,
     init,
     setRenderCallback,

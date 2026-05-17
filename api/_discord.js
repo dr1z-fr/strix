@@ -130,6 +130,59 @@ export function notifyAbsenceDeleted(abs, operatorName, actorName) {
   });
 }
 
+// =====================================================================
+// FORMATIONS
+// =====================================================================
+const FORMATIONS_PING_ROLE = process.env.DISCORD_FORMATIONS_PING_ROLE_ID || '';
+
+export function notifyFormationCreated(f, certCode, certName, trainerName) {
+  const url = process.env.DISCORD_WEBHOOK_FORMATIONS;
+  return send(url, {
+    title: `📚 Nouvelle formation — ${f.title}`,
+    color: COLOR.steel,
+    fields: [
+      { name: 'Certification', value: `**${certCode}** — ${certName}`, inline: false },
+      { name: 'Date',          value: fmtDate(f.date), inline: true },
+      { name: 'Lieu',          value: f.location || '—', inline: true },
+      ...(f.description ? [{ name: 'Programme', value: f.description.slice(0, 1024) }] : []),
+    ],
+    footer: { text: `Formateur · ${trainerName || '—'}` },
+    timestamp: new Date().toISOString(),
+  }, FORMATIONS_PING_ROLE ? { pingRoleId: FORMATIONS_PING_ROLE } : {});
+}
+
+export function notifyFormationCancelled(f, certCode, actorName) {
+  const url = process.env.DISCORD_WEBHOOK_FORMATIONS;
+  return send(url, {
+    title: `✖ Formation annulée — ${f.title}`,
+    color: COLOR.red,
+    fields: [
+      { name: 'Certification', value: certCode, inline: true },
+      { name: 'Date prévue',   value: fmtDate(f.date), inline: true },
+    ],
+    footer: { text: `Annulée par ${actorName || '—'}` },
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export function notifyFormationValidated(f, certCode, certName, certifiedNames, trainerName) {
+  const url = process.env.DISCORD_WEBHOOK_FORMATIONS;
+  const list = certifiedNames.length
+    ? certifiedNames.map(n => `• ${n}`).join('\n').slice(0, 1024)
+    : '_aucun opérateur certifié_';
+  return send(url, {
+    title: `🎖 Formation validée — ${certCode}`,
+    color: COLOR.green,
+    fields: [
+      { name: 'Session',       value: f.title, inline: false },
+      { name: 'Certification', value: `**${certCode}** — ${certName}`, inline: false },
+      { name: `Opérateurs certifiés (${certifiedNames.length})`, value: list, inline: false },
+    ],
+    footer: { text: `Validée par ${trainerName || '—'}` },
+    timestamp: new Date().toISOString(),
+  });
+}
+
 export function notifyAbsenceEnded(abs, operatorName) {
   const url = process.env.DISCORD_WEBHOOK_ABSENCES;
   return send(url, {

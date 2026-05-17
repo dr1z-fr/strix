@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import {
   notifyOpCreated, notifyOpDeleted,
   notifyAbsenceCreated, notifyAbsenceDeleted,
+  notifyFormationCreated, notifyFormationCancelled, notifyFormationValidated,
 } from './_discord.js';
 
 const { Pool } = pg;
@@ -95,6 +96,24 @@ const spec2cam = s => ({
   leadId: s.lead_id, adjId: s.adj_id, members: s.members || [],
   createdAt: new Date(s.created_at).getTime(),
 });
+const cert2cam = c => ({
+  id: c.id, code: c.code, name: c.name, description: c.description,
+  trainers: c.trainers || [],
+  createdAt: new Date(c.created_at).getTime(),
+});
+const formation2cam = f => ({
+  id: f.id, certId: f.cert_id, title: f.title, date: f.date.toISOString(),
+  location: f.location, description: f.description,
+  attendees: f.attendees || {},
+  validated: f.validated, validatedBy: f.validated_by,
+  validatedAt: f.validated_at ? new Date(f.validated_at).getTime() : null,
+  createdBy: f.created_by, createdAt: new Date(f.created_at).getTime(),
+});
+const holder2cam = h => ({
+  certId: h.cert_id, userId: h.user_id,
+  awardedAt: new Date(h.awarded_at).getTime(),
+  awardedBy: h.awarded_by, formationId: h.formation_id,
+});
 const train2cam = t => ({
   id: t.id, specId: t.spec_id, title: t.title, date: t.date.toISOString(),
   description: t.description, attendees: t.attendees || [],
@@ -176,12 +195,15 @@ export default async function handler(req, res) {
 
     // ===== INIT (single roundtrip — hot cache for the whole session) =====
     if (action === 'init') {
-      const [users, ops, absences, specs, trainings, log] = await Promise.all([
+      const [users, ops, absences, specs, trainings, certs, formations, holders, log] = await Promise.all([
         db.query('SELECT id, name, grade, role, status, can_manage_ops, must_change_password FROM users ORDER BY id'),
         db.query('SELECT * FROM ops ORDER BY date'),
         db.query('SELECT * FROM absences ORDER BY ts DESC'),
         db.query('SELECT * FROM specializations ORDER BY name'),
         db.query('SELECT * FROM trainings ORDER BY date DESC'),
+        db.query('SELECT * FROM certifications ORDER BY code'),
+        db.query('SELECT * FROM formations ORDER BY date DESC'),
+        db.query('SELECT * FROM cert_holders ORDER BY awarded_at DESC'),
         db.query('SELECT * FROM log ORDER BY ts DESC LIMIT 50'),
       ]);
       return res.json({
@@ -191,6 +213,9 @@ export default async function handler(req, res) {
         absences: absences.rows.map(abs2cam),
         specializations: specs.rows.map(spec2cam),
         trainings: trainings.rows.map(train2cam),
+        certifications: certs.rows.map(cert2cam),
+        formations: formations.rows.map(formation2cam),
+        certHolders: holders.rows.map(holder2cam),
         log: log.rows.map(log2cam),
       });
     }
@@ -292,6 +317,12 @@ export default async function handler(req, res) {
           [body.id]
         );
         await client.query(`UPDATE ops SET presences = presences - $1::text`, [body.id]);
+        await client.query(`UPDATE formations SET attendees = attendees - $1::text`, [body.id]);
+        await client.query(
+          `UPDATE certifications
+             SET trainers = COALESCE((SELECT jsonb_agg(x) FROM jsonb_array_elements_text(trainers) x WHERE x <> $1), '[]'::jsonb)`,
+          [body.id]
+        );
         await client.query('COMMIT');
       } catch (e) { await client.query('ROLLBACK'); throw e; }
       finally { client.release(); }
@@ -489,6 +520,197 @@ export default async function handler(req, res) {
       const spec = await getSpecForTraining(body.id);
       if (!isSpecManagerOf(spec)) return res.status(403).json({ error: 'forbidden' });
       await db.query('DELETE FROM trainings WHERE id = $1', [body.id]);
+      return res.json({ ok: true });
+    }
+
+    // ===========================================================
+    //  CERTIFICATIONS
+    // ===========================================================
+    const isTrainerOf = (cert) => {
+      if (!cert) return false;
+      if (isCmd(meCam)) return true;
+      const list = Array.isArray(cert.trainers) ? cert.trainers : [];
+      return list.includes(meCam.id);
+    };
+    const loadCert = async (id) => {
+      const { rows } = await db.query('SELECT * FROM certifications WHERE id = $1', [id]);
+      return rows[0] || null;
+    };
+    const loadFormation = async (id) => {
+      const { rows } = await db.query('SELECT * FROM formations WHERE id = $1', [id]);
+      return rows[0] || null;
+    };
+
+    if (action === 'certs.insert') {
+      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      const r = body.record;
+      if (!r?.id || !r?.code || !r?.name) return res.status(400).json({ error: 'invalid_record' });
+      await db.query(
+        `INSERT INTO certifications (id, code, name, description, trainers)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [r.id, r.code, r.name, r.description || null, JSON.stringify(r.trainers || [])]
+      );
+      return res.json({ ok: true });
+    }
+    if (action === 'certs.update') {
+      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      const { id, patch } = body;
+      const fields = []; const values = []; let i = 1;
+      for (const k of ['code', 'name', 'description']) {
+        if (patch[k] !== undefined) { fields.push(`${k} = $${i++}`); values.push(patch[k]); }
+      }
+      if (patch.trainers !== undefined) {
+        fields.push(`trainers = $${i++}::jsonb`);
+        values.push(JSON.stringify(Array.isArray(patch.trainers) ? patch.trainers : []));
+      }
+      if (!fields.length) return res.json({ ok: true });
+      values.push(id);
+      await db.query(`UPDATE certifications SET ${fields.join(', ')} WHERE id = $${i}`, values);
+      return res.json({ ok: true });
+    }
+    if (action === 'certs.delete') {
+      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      // ON DELETE CASCADE handles formations + cert_holders
+      await db.query('DELETE FROM certifications WHERE id = $1', [body.id]);
+      return res.json({ ok: true });
+    }
+
+    // Revoke a certification from a holder (manual override by CMD)
+    if (action === 'certs.revoke') {
+      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      const { certId, userId } = body;
+      await db.query(
+        'DELETE FROM cert_holders WHERE cert_id = $1 AND user_id = $2',
+        [certId, userId]
+      );
+      return res.json({ ok: true });
+    }
+
+    // ===========================================================
+    //  FORMATIONS
+    // ===========================================================
+    if (action === 'formations.insert') {
+      const r = body.record;
+      if (!r?.id || !r?.certId || !r?.title || !r?.date) {
+        return res.status(400).json({ error: 'invalid_record' });
+      }
+      const cert = await loadCert(r.certId);
+      if (!cert) return res.status(404).json({ error: 'not_found' });
+      if (!isTrainerOf(cert)) return res.status(403).json({ error: 'forbidden_not_trainer' });
+      await db.query(
+        `INSERT INTO formations (id, cert_id, title, date, location, description, attendees, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [r.id, r.certId, r.title, r.date, r.location || null, r.description || null,
+         JSON.stringify(r.attendees || {}), meCam.id]
+      );
+      await notifyFormationCreated(r, cert.code, cert.name, meCam.name);
+      return res.json({ ok: true });
+    }
+
+    if (action === 'formations.update') {
+      const { id, patch } = body;
+      const f = await loadFormation(id);
+      if (!f) return res.status(404).json({ error: 'not_found' });
+      const cert = await loadCert(f.cert_id);
+
+      // Self-toggle attendance shortcut: anyone can toggle THEIR OWN attendance
+      // as long as the formation isn't yet validated.
+      if (patch.attendees !== undefined) {
+        const prev = f.attendees || {};
+        const next = patch.attendees || {};
+        if (f.validated && !isTrainerOf(cert)) {
+          return res.status(403).json({ error: 'formation_locked' });
+        }
+        const changed = [];
+        const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+        for (const k of allKeys) if (!!prev[k] !== !!next[k]) changed.push(k);
+        const onlySelf = changed.length === 1 && changed[0] === meCam.id;
+        if (!onlySelf && !isTrainerOf(cert)) {
+          return res.status(403).json({ error: 'forbidden_roster' });
+        }
+        await db.query(
+          `UPDATE formations SET attendees = $1::jsonb WHERE id = $2`,
+          [JSON.stringify(next), id]
+        );
+      }
+
+      // Validation/de-validation: trainers of the cert only.
+      // On VALIDATION: award the certification to every attendee marked TRUE.
+      if (patch.validated !== undefined) {
+        if (!isTrainerOf(cert)) return res.status(403).json({ error: 'forbidden_not_trainer' });
+
+        if (!!patch.validated && !f.validated) {
+          // Read the LATEST attendees (may have just been patched above)
+          const fresh = await loadFormation(id);
+          const att = fresh.attendees || {};
+          const presentIds = Object.entries(att).filter(([_, v]) => !!v).map(([k]) => k);
+
+          if (presentIds.length) {
+            // Bulk award via UNNEST + ON CONFLICT (idempotent)
+            await db.query(
+              `INSERT INTO cert_holders (cert_id, user_id, awarded_by, formation_id)
+               SELECT $1, unnest($2::text[]), $3, $4
+               ON CONFLICT (cert_id, user_id) DO NOTHING`,
+              [f.cert_id, presentIds, meCam.id, id]
+            );
+          }
+          await db.query(
+            `UPDATE formations
+                SET validated = TRUE, validated_by = $1, validated_at = NOW()
+              WHERE id = $2`,
+            [meCam.id, id]
+          );
+          // Resolve names for the Discord embed
+          const { rows: nameRows } = await db.query(
+            'SELECT id, name FROM users WHERE id = ANY($1::text[])', [presentIds]
+          );
+          const namesById = Object.fromEntries(nameRows.map(r => [r.id, r.name]));
+          const certifiedNames = presentIds.map(uid => namesById[uid] || uid);
+          await notifyFormationValidated(
+            { ...f, ...(patch.title !== undefined ? { title: patch.title } : {}) },
+            cert.code, cert.name, certifiedNames, meCam.name
+          );
+        } else if (!patch.validated && f.validated) {
+          // De-validation: revoke the certifications that were granted by THIS formation
+          await db.query('DELETE FROM cert_holders WHERE formation_id = $1', [id]);
+          await db.query(
+            `UPDATE formations SET validated = FALSE, validated_by = NULL, validated_at = NULL
+              WHERE id = $1`, [id]
+          );
+        }
+      }
+
+      // Trainers can edit meta fields too
+      if (patch.title !== undefined || patch.location !== undefined ||
+          patch.description !== undefined || patch.date !== undefined) {
+        if (!isTrainerOf(cert)) return res.status(403).json({ error: 'forbidden_not_trainer' });
+        const fields = []; const values = []; let i = 1;
+        for (const k of ['title', 'location', 'description']) {
+          if (patch[k] !== undefined) { fields.push(`${k} = $${i++}`); values.push(patch[k]); }
+        }
+        if (patch.date !== undefined) { fields.push(`date = $${i++}`); values.push(patch.date); }
+        if (fields.length) {
+          values.push(id);
+          await db.query(`UPDATE formations SET ${fields.join(', ')} WHERE id = $${i}`, values);
+        }
+      }
+
+      return res.json({ ok: true });
+    }
+
+    if (action === 'formations.delete') {
+      const f = await loadFormation(body.id);
+      if (!f) return res.status(404).json({ error: 'not_found' });
+      const cert = await loadCert(f.cert_id);
+      // Trainer of the cert OR creator of the formation OR cmd
+      if (!isTrainerOf(cert) && f.created_by !== meCam.id) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
+      await db.query('DELETE FROM formations WHERE id = $1', [body.id]);
+      await notifyFormationCancelled(
+        { ...f, date: f.date.toISOString() },
+        cert?.code || '?', meCam.name
+      );
       return res.json({ ok: true });
     }
 
