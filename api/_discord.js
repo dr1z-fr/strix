@@ -27,7 +27,7 @@ function fmtDay(d) {
   } catch { return String(d); }
 }
 
-async function send(webhookUrl, embed) {
+async function send(webhookUrl, embed, opts = {}) {
   if (!webhookUrl) {
     console.warn('[discord] no webhook url configured — skip');
     return;
@@ -37,14 +37,19 @@ async function send(webhookUrl, embed) {
     console.error('[discord] invalid webhook URL format:', url.slice(0, 60));
     return;
   }
+  const payload = {
+    username: 'STRIX Command',
+    embeds: [embed],
+  };
+  if (opts.pingRoleId) {
+    payload.content = `<@&${opts.pingRoleId}>`;
+    payload.allowed_mentions = { parse: [], roles: [opts.pingRoleId] };
+  }
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: 'STRIX Command',
-        embeds: [embed],
-      }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => '');
@@ -60,6 +65,8 @@ async function send(webhookUrl, embed) {
 // =====================================================================
 // OPERATIONS
 // =====================================================================
+const OPS_PING_ROLE = process.env.DISCORD_OPS_PING_ROLE_ID || '1432712716589465763';
+
 export function notifyOpCreated(op, actor) {
   const url = process.env.DISCORD_WEBHOOK_OPS;
   return send(url, {
@@ -73,7 +80,7 @@ export function notifyOpCreated(op, actor) {
     ],
     footer: { text: `Créée par ${actor || '—'}` },
     timestamp: new Date().toISOString(),
-  });
+  }, { pingRoleId: OPS_PING_ROLE });
 }
 
 export function notifyOpDeleted(op, actor) {
@@ -87,7 +94,7 @@ export function notifyOpDeleted(op, actor) {
     ],
     footer: { text: `Annulée par ${actor || '—'}` },
     timestamp: new Date().toISOString(),
-  });
+  }, { pingRoleId: OPS_PING_ROLE });
 }
 
 // =====================================================================
