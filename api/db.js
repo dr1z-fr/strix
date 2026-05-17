@@ -191,11 +191,17 @@ export default async function handler(req, res) {
       });
     }
 
+    // Hierarchy helpers — tier 1 = highest. "Strictement supérieur" = tier <.
+    const meTier = GRADE_TIERS[me.grade] || 99;
+    const tierOf = (gradeKey) => GRADE_TIERS[gradeKey] || 99;
+    const outranksMe = (targetGrade) => tierOf(targetGrade) < meTier;
+
     // ===== USERS (CMD only) =====
     if (action === 'users.insert') {
       if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
       const r = body.record;
       if (!r?.id || !r?.name || !r?.grade) return res.status(400).json({ error: 'invalid_record' });
+      if (outranksMe(r.grade)) return res.status(403).json({ error: 'forbidden_higher_rank' });
       const role = roleFromGrade(r.grade);
       const cmo  = r.canManageOps !== undefined ? !!r.canManageOps : defaultCanManageOps(r.grade);
       const hash = await bcrypt.hash(r.password || 'changeme', 10);
@@ -209,11 +215,22 @@ export default async function handler(req, res) {
     if (action === 'users.update') {
       if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
       const { id, patch } = body;
+      // Load target to check rank hierarchy
+      const { rows: tgtRows } = await db.query('SELECT grade FROM users WHERE id = $1', [id]);
+      const target = tgtRows[0];
+      if (!target) return res.status(404).json({ error: 'not_found' });
+      // Cannot modify someone outranking you (unless it's yourself).
+      if (id !== meCam.id && outranksMe(target.grade)) {
+        return res.status(403).json({ error: 'forbidden_higher_rank' });
+      }
+      // Cannot promote anyone to a grade outranking you.
+      if (patch.grade !== undefined && outranksMe(patch.grade)) {
+        return res.status(403).json({ error: 'forbidden_higher_rank' });
+      }
       const fields = []; const values = []; let i = 1;
       for (const k of ['name', 'grade', 'status']) {
         if (patch[k] !== undefined) { fields.push(`${k} = $${i++}`); values.push(patch[k]); }
       }
-      // Role is always derived from grade (cannot be set independently)
       if (patch.grade !== undefined) {
         fields.push(`role = $${i++}`); values.push(roleFromGrade(patch.grade));
       }
@@ -231,6 +248,11 @@ export default async function handler(req, res) {
     if (action === 'users.delete') {
       if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
       if (body.id === meCam.id) return res.status(400).json({ error: 'cannot_delete_self' });
+      const { rows: tgtRows } = await db.query('SELECT grade FROM users WHERE id = $1', [body.id]);
+      const target = tgtRows[0];
+      if (target && outranksMe(target.grade)) {
+        return res.status(403).json({ error: 'forbidden_higher_rank' });
+      }
       // Atomic cleanup in a single transaction (frees the client from doing it)
       const client = await db.connect();
       try {

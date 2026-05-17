@@ -824,8 +824,9 @@ const userFormCancel = $('userFormCancel');
 
 function populateGradeSelect() {
   const select = $('userGrade');
+  const myTier = myGrade?.tier ?? 99;
   const groups = db.gradeGroups.map(group => {
-    const opts = db.grades.filter(g => g.group === group)
+    const opts = db.grades.filter(g => g.group === group && g.tier >= myTier)
       .map(g => `<option value="${g.key}">${g.label} — « ${g.appel} »</option>`).join('');
     return `<optgroup label="${group}">${opts}</optgroup>`;
   }).join('');
@@ -885,6 +886,17 @@ userForm?.addEventListener('submit', (e) => {
   if (!data.id || data.id.length < 2) { toast('Nom de code requis'); return; }
   if (!editId && !data.password) { toast('Code d\'accès requis à la création'); return; }
 
+  // Hierarchy guard: cannot create/promote above own rank
+  const myTier = myGrade?.tier ?? 99;
+  if (grade.tier < myTier) { toast('Impossible : grade supérieur au tien'); return; }
+
+  // Cannot edit an existing user that outranks me (server enforces too)
+  if (editId && editId !== me.id) {
+    const current = db.users.find(editId);
+    const currentTier = current ? (db.gradeByKey(current.grade)?.tier ?? 99) : 99;
+    if (currentTier < myTier) { toast('Impossible : opérateur de rang supérieur'); return; }
+  }
+
   if (editId) {
     // Don't overwrite password if blank on edit
     const patch = { ...data };
@@ -905,11 +917,14 @@ userForm?.addEventListener('submit', (e) => {
 
 function renderUserAdmin() {
   const tbody = $('userTable');
+  const myTier = myGrade?.tier ?? 99;
   const users = db.users.all().sort((a, b) => (gradeOf(a)?.tier || 99) - (gradeOf(b)?.tier || 99));
   tbody.innerHTML = users.map(u => {
     const g = gradeOf(u);
+    const targetTier = g?.tier ?? 99;
+    const outranks = targetTier < myTier && u.id !== me.id;
     return `
-    <tr>
+    <tr ${outranks ? 'class="row-locked"' : ''}>
       <td class="mono">${u.id}</td>
       <td>
         <div style="display:flex;align-items:center;gap:10px;">
@@ -924,8 +939,10 @@ function renderUserAdmin() {
         ? '<span class="perm-on">✓ Autorisé</span>'
         : '<span class="perm-off">— Désactivé</span>'}</td>
       <td class="row-actions">
-        <button class="btn-ghost btn-sm" data-edit-user="${u.id}">Éditer</button>
-        ${u.id !== me.id ? `<button class="btn-danger btn-sm" data-del-user="${u.id}">Supprimer</button>` : ''}
+        ${outranks
+          ? '<span class="perm-off" title="Supérieur hiérarchique — verrouillé">🔒 Hors portée</span>'
+          : `<button class="btn-ghost btn-sm" data-edit-user="${u.id}">Éditer</button>
+             ${u.id !== me.id ? `<button class="btn-danger btn-sm" data-del-user="${u.id}">Supprimer</button>` : ''}`}
       </td>
     </tr>`;
   }).join('');

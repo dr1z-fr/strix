@@ -53,6 +53,22 @@
     },
   };
 
+  // ---- Error code → human message ----
+  const ERROR_MAP = {
+    forbidden: 'Action interdite',
+    forbidden_higher_rank: 'Impossible : opérateur de rang supérieur',
+    forbidden_validate: 'Validation interdite',
+    forbidden_roster: 'Modification du roster interdite',
+    forbidden_members: 'Gestion des membres interdite',
+    forbidden_meta: 'Modification réservée au commandement',
+    op_locked: 'Opération verrouillée',
+    cannot_delete_self: 'Impossible de se supprimer soi-même',
+    not_found: 'Élément introuvable',
+    session_invalid: 'Session invalide',
+    unauthorized: 'Non autorisé',
+  };
+  function humanError(code) { return ERROR_MAP[code] || code; }
+
   // ---- API helper ----
   async function api(action, payload) {
     const headers = { 'Content-Type': 'application/json' };
@@ -115,7 +131,7 @@
           const i = cache[name].findIndex(x => x.id === record.id);
           if (i !== -1) cache[name].splice(i, 1);
           triggerRender();
-          window.STRIX?.toast?.(`Erreur sync: ${err.message}`);
+          window.STRIX?.toast?.(humanError(err.message));
           throw err;
         }
         return record;
@@ -131,7 +147,7 @@
         catch (err) {
           cache[name][i] = prev;
           triggerRender();
-          window.STRIX?.toast?.(`Erreur sync: ${err.message}`);
+          window.STRIX?.toast?.(humanError(err.message));
           throw err;
         }
         return cache[name][i];
@@ -147,7 +163,7 @@
         catch (err) {
           cache[name].splice(i, 0, prev);
           triggerRender();
-          window.STRIX?.toast?.(`Erreur sync: ${err.message}`);
+          window.STRIX?.toast?.(humanError(err.message));
           throw err;
         }
         return true;
