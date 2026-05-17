@@ -18,20 +18,15 @@
 
     { key: 'capitaine',         label: 'Capitaine',            short: 'CNE',  appel: 'Mon Capitaine',   group: 'Officiers',        role: 'lead', tier: 4 },
     { key: 'lieutenant',        label: 'Lieutenant',           short: 'LT',   appel: 'Mon Lieutenant',  group: 'Officiers',        role: 'lead', tier: 5 },
-    { key: 'sous-lieutenant',   label: 'Sous-Lieutenant',      short: 'SLT',  appel: 'Mon Lieutenant',  group: 'Officiers',        role: 'lead', tier: 6 },
 
-    { key: 'major',             label: 'Major',                short: 'MAJ',  appel: 'Major',           group: 'Sous-Officiers',   role: 'lead', tier: 7 },
-    { key: 'adjudant-chef',     label: 'Adjudant-chef',        short: 'ADC',  appel: 'Chef',            group: 'Sous-Officiers',   role: 'lead', tier: 8 },
-    { key: 'adjudant',          label: 'Adjudant',             short: 'ADJ',  appel: 'Chef',            group: 'Sous-Officiers',   role: 'lead', tier: 9 },
-    { key: 'sergent-chef',      label: 'Sergent-chef',         short: 'SCH',  appel: 'Chef',            group: 'Sous-Officiers',   role: 'lead', tier: 10 },
-    { key: 'sergent',           label: 'Sergent',              short: 'SGT',  appel: 'Sergent',         group: 'Sous-Officiers',   role: 'lead', tier: 11 },
+    { key: 'major',             label: 'Major',                short: 'MAJ',  appel: 'Major',           group: 'Sous-Officiers',   role: 'lead', tier: 6 },
+    { key: 'adjudant',          label: 'Adjudant',             short: 'ADJ',  appel: 'Chef',            group: 'Sous-Officiers',   role: 'lead', tier: 7 },
+    { key: 'sergent',           label: 'Sergent',              short: 'SGT',  appel: 'Sergent',         group: 'Sous-Officiers',   role: 'lead', tier: 8 },
 
-    { key: 'caporal-chef',      label: 'Caporal-Chef',         short: 'CCH',  appel: 'Caporal-chef',    group: 'Militaires du Rang', role: 'op', tier: 12 },
-    { key: 'caporal',           label: 'Caporal',              short: 'CPL',  appel: 'Caporal',         group: 'Militaires du Rang', role: 'op', tier: 13 },
-    { key: 'operateur-1cl',     label: 'Opérateur 1ère Classe', short: 'OP1', appel: 'Opérateur',       group: 'Militaires du Rang', role: 'op', tier: 14 },
-    { key: 'operateur-2cl',     label: 'Opérateur 2nde Classe', short: 'OP2', appel: 'Opérateur',       group: 'Militaires du Rang', role: 'op', tier: 15 },
-    { key: 'soldat-2cl',        label: 'Soldat 2nde Classe',   short: 'SDT',  appel: 'Soldat',          group: 'Militaires du Rang', role: 'op', tier: 16 },
-    { key: 'recrue',            label: 'Recrue',               short: 'REC',  appel: 'Recrue',          group: 'Militaires du Rang', role: 'op', tier: 17 },
+    { key: 'caporal',           label: 'Caporal',              short: 'CPL',  appel: 'Caporal',         group: 'Militaires du Rang', role: 'op', tier: 9 },
+    { key: 'operateur-1cl',     label: 'Opérateur 1ère Classe', short: 'OP1', appel: 'Opérateur',       group: 'Militaires du Rang', role: 'op', tier: 10 },
+    { key: 'operateur-2cl',     label: 'Opérateur 2nde Classe', short: 'OP2', appel: 'Opérateur',       group: 'Militaires du Rang', role: 'op', tier: 11 },
+    { key: 'recrue',            label: 'Recrue',               short: 'REC',  appel: 'Recrue',          group: 'Militaires du Rang', role: 'op', tier: 12 },
   ];
   const GRADE_GROUPS = ['Direction', 'Officiers', 'Sous-Officiers', 'Militaires du Rang'];
   const gradeByKey = key => GRADES.find(g => g.key === key) || null;

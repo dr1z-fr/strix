@@ -27,17 +27,16 @@ function getPool() {
 const SECRET = process.env.SESSION_SECRET || 'change-me-please';
 const TOKEN_TTL_MS = 7 * 24 * 3600 * 1000; // 7 jours (compromis sécu/UX)
 
-// Tier <= 11 (Sergent et + haut) reçoit canManageOps par défaut.
-const OPS_PERM_DEFAULT_TIER = 11;
+// Tier <= 8 (Sergent et + haut) reçoit canManageOps par défaut.
+const OPS_PERM_DEFAULT_TIER = 8;
 const GRADE_TIERS = {
   'colonel': 1, 'lt-colonel': 2, 'commandant': 3,
-  'capitaine': 4, 'lieutenant': 5, 'sous-lieutenant': 6,
-  'major': 7, 'adjudant-chef': 8, 'adjudant': 9, 'sergent-chef': 10, 'sergent': 11,
-  'caporal-chef': 12, 'caporal': 13, 'operateur-1cl': 14, 'operateur-2cl': 15,
-  'soldat-2cl': 16, 'recrue': 17,
+  'capitaine': 4, 'lieutenant': 5,
+  'major': 6, 'adjudant': 7, 'sergent': 8,
+  'caporal': 9, 'operateur-1cl': 10, 'operateur-2cl': 11, 'recrue': 12,
 };
 const ROLE_BY_TIER = (tier) =>
-  tier <= 3 ? 'cmd' : tier <= 11 ? 'lead' : 'op';
+  tier <= 3 ? 'cmd' : tier <= 8 ? 'lead' : 'op';
 const defaultCanManageOps = (gradeKey) => (GRADE_TIERS[gradeKey] || 99) <= OPS_PERM_DEFAULT_TIER;
 const roleFromGrade = (gradeKey) => ROLE_BY_TIER(GRADE_TIERS[gradeKey] || 99);
 

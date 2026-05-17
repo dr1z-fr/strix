@@ -42,30 +42,93 @@ L'identifiant initial est **Drui** (Colonel) avec le mot de passe **`strix2025`*
 
 ## Sécurité
 
-Toutes les actions sensibles sont **vérifiées côté serveur** dans `api/db.js`. Le frontend ne peut pas être contourné :
-
-| Action | Qui peut ? |
-|---|---|
-| `users.*` | `cmd` uniquement |
-| `ops.insert/delete` | `canManageOps` ou `cmd` |
-| `ops.update` — `validated` | `canManageOps` ou `cmd` |
-| `ops.update` — `presences` (autrui) | `canManageOps` ou `cmd` |
-| `ops.update` — `presences` (soi-même) | tous |
-| `absences.insert` | l'opérateur lui-même OU manageur |
-| `absences.delete` | déclarant, opérateur cible, ou manageur |
-| `specs.insert/delete` | `cmd` |
-| `specs.update` — nom/desc/lead/adj | `cmd` |
-| `specs.update` — membres | Resp., Adj. ou `cmd` |
-| `trainings.*` | Resp., Adj. ou `cmd` |
-| `log.insert` | tout utilisateur authentifié |
+Toutes les actions sensibles sont **vérifiées côté serveur** dans `api/db.js`. Le frontend ne peut pas être contourné.
 
 Token de session : HMAC-SHA256 signé, expire au bout de 7 jours, transmis en `Authorization: Bearer …`. Comparaison à temps constant. Statut + rôle revérifiés en DB à chaque requête (1 SELECT indexé sur clé primaire ≈ 1 ms).
 
-Mots de passe : **bcrypt** (cost 10).
+Mots de passe : **bcrypt** (cost 10). Changement de code obligatoire à la première connexion.
+
+---
+
+## Hiérarchie des grades
+
+| Tier | Grade | Sigle | Groupe | Rôle système | `canManageOps` par défaut |
+|:---:|---|:---:|---|:---:|:---:|
+| 1 | Colonel              | COL | Direction          | `cmd`  | ✅ |
+| 2 | Lieutenant-Colonel   | LCL | Direction          | `cmd`  | ✅ |
+| 3 | Commandant           | CDT | Direction          | `cmd`  | ✅ |
+| 4 | Capitaine            | CNE | Officiers          | `lead` | ✅ |
+| 5 | Lieutenant           | LT  | Officiers          | `lead` | ✅ |
+| 6 | Major                | MAJ | Sous-Officiers     | `lead` | ✅ |
+| 7 | Adjudant             | ADJ | Sous-Officiers     | `lead` | ✅ |
+| 8 | Sergent              | SGT | Sous-Officiers     | `lead` | ✅ |
+| 9 | Caporal              | CPL | Militaires du Rang | `op`   | ❌ |
+| 10 | Opérateur 1ʳᵉ Classe | OP1 | Militaires du Rang | `op`   | ❌ |
+| 11 | Opérateur 2ⁿᵈᵉ Classe| OP2 | Militaires du Rang | `op`   | ❌ |
+| 12 | Recrue               | REC | Militaires du Rang | `op`   | ❌ |
+
+> **Tier 1 = grade le plus haut.** Un opérateur ne peut jamais modifier, supprimer, ni promouvoir au-dessus de son propre tier (vérifié API + UI).
+
+### Rôles système
+
+- **`cmd`** (tier 1–3) : Direction. Accès complet à l'administration (utilisateurs, spécialisations, etc.).
+- **`lead`** (tier 4–8) : Officiers + Sous-Officiers. Encadrement opérationnel. Reçoit `canManageOps` par défaut.
+- **`op`** (tier 9–12) : Militaires du Rang. Accès opérationnel basique (présences, ses propres absences).
 
 ### Flag `canManageOps`
 
-Permission individuelle, toggable par le CMD dans l'onglet **Administration**. Cochée par défaut pour les grades de tier ≤ 11 (Sergent et au-dessus). Peut être **retirée à un Sergent** ou **accordée à un Caporal** au cas par cas.
+Permission individuelle togglable par le CMD dans **Administration**. Cochée par défaut pour les tiers ≤ 8 (Sergent et au-dessus). Peut être **retirée à un Sergent** ou **accordée à un Caporal** au cas par cas — dissocie la responsabilité opérationnelle du grade.
+
+---
+
+## Matrice des permissions
+
+Légende : ✅ autorisé · 🟡 conditionnel · ❌ interdit
+
+### Vue par action API
+
+| Action | `op` | `op + canManageOps` | `lead` | `cmd` |
+|---|:---:|:---:|:---:|:---:|
+| **Lecture** (`init`) | ✅ | ✅ | ✅ | ✅ |
+| **Auth** — changer son propre code (`auth.changePassword`) | ✅ | ✅ | ✅ | ✅ |
+| **Logs** — écrire (`log.insert`) | ✅ | ✅ | ✅ | ✅ |
+| **Ops** — créer (`ops.insert`) | ❌ | ✅ | ✅ | ✅ |
+| **Ops** — supprimer (`ops.delete`) | ❌ | ✅ | ✅ | ✅ |
+| **Ops** — valider/dévalider (`ops.update.validated`) | ❌ | ✅ | ✅ | ✅ |
+| **Ops** — toggle sa propre présence | ✅ 🟡 | ✅ | ✅ | ✅ |
+| **Ops** — modifier la présence d'autrui | ❌ | ✅ | ✅ | ✅ |
+| **Absences** — déclarer la sienne | ✅ | ✅ | ✅ | ✅ |
+| **Absences** — déclarer pour autrui | ❌ | ✅ | ✅ | ✅ |
+| **Absences** — retirer | 🟡¹ | 🟡¹ ✅ | ✅ | ✅ |
+| **Spécialisations** — CRUD (créer/supprimer/méta) | ❌ | ❌ | ❌ | ✅ |
+| **Spécialisations** — gérer les membres | 🟡² | 🟡² | 🟡² | ✅ |
+| **Entraînements** — créer/supprimer | 🟡² | 🟡² | 🟡² | ✅ |
+| **Utilisateurs** — créer/éditer/supprimer | ❌ | ❌ | ❌ | ✅ ³ |
+
+🟡 conditions :
+1. Une absence ne peut être retirée que par : son **déclarant**, l'**opérateur concerné**, ou un manageur (`canManageOps` / `cmd`).
+2. Réservé au **Responsable** ou **Adjoint** de la spécialisation concernée (peu importe le grade), ou au `cmd`.
+3. Le `cmd` ne peut **jamais** modifier ni supprimer un opérateur de tier strictement supérieur, ni promouvoir quiconque à un tier supérieur au sien (un `Commandant` ne peut pas créer un `Colonel`).
+
+🟡 ops self-toggle : si l'op est déjà **validée**, plus personne d'autre qu'un manageur ne peut toucher au roster (`op_locked`).
+
+### Vue par grade
+
+| Capacité | Recrue → OP2 | Caporal | Sergent → Major | Lieutenant → Capitaine | Commandant → Colonel |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Voir le panel & ses propres infos | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Toggle sa présence sur les ops | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Déclarer / retirer ses absences | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Créer / annuler des opérations | ❌ | ❌ ⁴ | ✅ | ✅ | ✅ |
+| Valider une op et son roster | ❌ | ❌ ⁴ | ✅ | ✅ | ✅ |
+| Déclarer une absence pour autrui | ❌ | ❌ ⁴ | ✅ | ✅ | ✅ |
+| Gérer les membres d'une spécialisation | ❌ ⁵ | ❌ ⁵ | ❌ ⁵ | ❌ ⁵ | ✅ |
+| Créer / supprimer une spécialisation | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Créer / éditer / supprimer un opérateur | ❌ | ❌ | ❌ | ❌ | ✅ ³ |
+| Modifier le flag `canManageOps` d'un opérateur | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+⁴ Sauf si le `cmd` lui a accordé manuellement le flag `canManageOps`.  
+⁵ Sauf si l'opérateur est désigné **Responsable** ou **Adjoint** de cette spécialisation, peu importe son grade.
 
 ---
 

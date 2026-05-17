@@ -18,6 +18,13 @@ CREATE TABLE IF NOT EXISTS users (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS can_manage_ops BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
 
+-- Migration : remapping des grades supprimés (rétrogradation au grade immédiatement inférieur encore existant)
+UPDATE users SET grade = 'lieutenant'   WHERE grade = 'sous-lieutenant';
+UPDATE users SET grade = 'adjudant'     WHERE grade = 'adjudant-chef';
+UPDATE users SET grade = 'sergent'      WHERE grade = 'sergent-chef';
+UPDATE users SET grade = 'caporal'      WHERE grade = 'caporal-chef';
+UPDATE users SET grade = 'operateur-2cl' WHERE grade = 'soldat-2cl';
+
 CREATE TABLE IF NOT EXISTS ops (
   id            TEXT PRIMARY KEY,
   name          TEXT NOT NULL,
