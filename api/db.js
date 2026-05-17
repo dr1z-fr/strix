@@ -5,6 +5,10 @@
 import pg from 'pg';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import {
+  notifyOpCreated, notifyOpDeleted,
+  notifyAbsenceCreated, notifyAbsenceDeleted,
+} from './_discord.js';
 
 const { Pool } = pg;
 
@@ -305,6 +309,7 @@ export default async function handler(req, res) {
         [r.id, r.name, r.date, r.zone, r.priority, r.brief, meCam.id,
          JSON.stringify(r.presences || {}), false, null]
       );
+      notifyOpCreated(r, meCam.name); // fire-and-forget
       return res.json({ ok: true });
     }
     if (action === 'ops.update') {
@@ -351,7 +356,13 @@ export default async function handler(req, res) {
     }
     if (action === 'ops.delete') {
       if (!canManageOps(meCam)) return res.status(403).json({ error: 'forbidden' });
+      const { rows: opRows } = await db.query('SELECT id, name, date, zone FROM ops WHERE id = $1', [body.id]);
+      const opToDelete = opRows[0];
       await db.query('DELETE FROM ops WHERE id = $1', [body.id]);
+      if (opToDelete) notifyOpDeleted({
+        ...opToDelete,
+        date: opToDelete.date.toISOString(),
+      }, meCam.name);
       return res.json({ ok: true });
     }
 
@@ -366,12 +377,16 @@ export default async function handler(req, res) {
          VALUES ($1,$2,$3,$4,$5,$6,$7, to_timestamp($8 / 1000.0))`,
         [r.id, r.operator, r.from, r.to, r.reason, r.comment, meCam.id, r.ts || Date.now()]
       );
+      const { rows: nameRows } = await db.query('SELECT name FROM users WHERE id = $1', [r.operator]);
+      notifyAbsenceCreated(r, nameRows[0]?.name || r.operator, meCam.name);
       return res.json({ ok: true });
     }
     if (action === 'absences.delete') {
       // Only declarer, target operator, or manager may remove.
       const { rows } = await db.query(
-        'SELECT operator, declared_by FROM absences WHERE id = $1', [body.id]
+        `SELECT a.*, u.name AS operator_name
+         FROM absences a LEFT JOIN users u ON u.id = a.operator
+         WHERE a.id = $1`, [body.id]
       );
       const a = rows[0];
       if (!a) return res.status(404).json({ error: 'not_found' });
@@ -379,6 +394,11 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'forbidden' });
       }
       await db.query('DELETE FROM absences WHERE id = $1', [body.id]);
+      notifyAbsenceDeleted({
+        from: a.from_date instanceof Date ? a.from_date.toISOString().slice(0, 10) : String(a.from_date).slice(0, 10),
+        to:   a.to_date   instanceof Date ? a.to_date.toISOString().slice(0, 10)   : String(a.to_date).slice(0, 10),
+        reason: a.reason,
+      }, a.operator_name || a.operator, meCam.name);
       return res.json({ ok: true });
     }
 

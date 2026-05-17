@@ -41,8 +41,11 @@ CREATE TABLE IF NOT EXISTS absences (
   reason       TEXT NOT NULL,
   comment      TEXT,
   declared_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
-  ts           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  ts           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  end_notified BOOLEAN NOT NULL DEFAULT FALSE
 );
+ALTER TABLE absences ADD COLUMN IF NOT EXISTS end_notified BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE INDEX IF NOT EXISTS absences_end_idx ON absences (to_date) WHERE end_notified = false;
 
 CREATE TABLE IF NOT EXISTS specializations (
   id           TEXT PRIMARY KEY,
