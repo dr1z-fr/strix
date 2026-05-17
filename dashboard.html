@@ -260,7 +260,38 @@
           <h3>Mes certifications</h3>
           <span class="tag" id="myCertsCount">0</span>
         </header>
-        <div id="myCertsList" class="cert-list"></div>
+        <div id="myCertsList" class="my-certs-strip"></div>
+      </div>
+
+      <!-- Formations list (groupées) -->
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Sessions de formation</h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="tag" id="formationsCount">0</span>
+            <button id="newFormationBtn" class="btn-primary btn-sm" style="display:none;">+ Nouvelle session</button>
+          </div>
+        </header>
+        <div id="formationsList"></div>
+      </div>
+
+      <!-- Formation form (collapsible) -->
+      <div class="panel" id="formationFormPanel" style="display:none;">
+        <header class="panel-header">
+          <h3 id="formationFormTitle">Programmer une formation</h3>
+        </header>
+        <form id="formationForm" class="form-grid">
+          <input type="hidden" id="formationEditId"/>
+          <label>Certification ciblée<select id="formationCert" required></select></label>
+          <label>Intitulé<input type="text" id="formationTitle" required placeholder="Session CQB — niveau 1"/></label>
+          <label>Date / heure<input type="datetime-local" id="formationDate" required/></label>
+          <label>Lieu<input type="text" id="formationLocation" placeholder="Camp Alpha — Salle B"/></label>
+          <label class="full">Programme<textarea id="formationDesc" rows="3"></textarea></label>
+          <div class="form-actions full">
+            <button type="button" id="formationCancelBtn" class="btn-ghost">Annuler</button>
+            <button type="submit" class="btn-primary">Enregistrer</button>
+          </div>
+        </form>
       </div>
 
       <!-- Certifications catalog -->
@@ -272,10 +303,11 @@
         <div id="certsList" class="cert-catalog"></div>
       </div>
 
-      <!-- Cert form (hidden by default, CMD only) -->
+      <!-- Cert form (hidden, CMD only) -->
       <div class="panel" id="certFormPanel" style="display:none;">
         <header class="panel-header">
           <h3 id="certFormTitle">Nouvelle certification</h3>
+          <span class="tag muted-tag">COMMANDEMENT UNIQUEMENT</span>
         </header>
         <form id="certForm" class="form-grid">
           <input type="hidden" id="certEditId"/>
@@ -292,34 +324,6 @@
             <button type="submit" class="btn-primary">Enregistrer</button>
           </div>
         </form>
-      </div>
-
-      <!-- Formations creation -->
-      <div class="panel" id="formationFormPanel" style="display:none;">
-        <header class="panel-header">
-          <h3 id="formationFormTitle">Programmer une formation</h3>
-        </header>
-        <form id="formationForm" class="form-grid">
-          <input type="hidden" id="formationEditId"/>
-          <label>Certification ciblée<select id="formationCert" required></select></label>
-          <label>Intitulé<input type="text" id="formationTitle" required placeholder="Session CQB — niveau 1"/></label>
-          <label>Date / heure<input type="datetime-local" id="formationDate" required/></label>
-          <label>Lieu<input type="text" id="formationLocation" placeholder="Camp Alpha — Salle B"/></label>
-          <label class="full">Programme<textarea id="formationDesc" rows="3"></textarea></label>
-          <div class="form-actions full">
-            <button type="button" id="formationCancelBtn" class="btn-ghost" style="display:none;">Annuler édition</button>
-            <button type="submit" class="btn-primary">Enregistrer</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Formations list -->
-      <div class="panel">
-        <header class="panel-header">
-          <h3>Formations</h3>
-          <span class="tag" id="formationsCount">0</span>
-        </header>
-        <div id="formationsList" class="ops-list"></div>
       </div>
 
     </section>

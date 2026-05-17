@@ -561,78 +561,263 @@ tr.row-locked .mono { color: var(--dim-2); }
 /* =========================================================
    FORMATIONS & CERTIFICATIONS
    ========================================================= */
-.cert-list {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px; padding: 16px;
-}
-.cert-card {
-  display: flex; align-items: center; gap: 12px;
-  background: var(--bg-3); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 14px 16px;
-}
-.cert-code {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 56px; height: 56px; padding: 0 10px;
-  background: var(--bg-1); border: 1px solid var(--border-2);
-  border-radius: var(--radius-sm);
-  font-family: var(--mono); font-weight: 700; font-size: 14px;
-  letter-spacing: 0.08em; color: var(--fg);
-}
-.cert-info { flex: 1; min-width: 0; }
-.cert-name { font-weight: 600; font-size: 13px; color: var(--fg); margin-bottom: 2px; }
-.cert-meta { font-size: 11px; color: var(--dim); }
-.cert-desc { font-size: 11.5px; color: var(--dim); margin-top: 4px; line-height: 1.4; }
 
-.cert-catalog { padding: 8px 0; }
-.cert-row {
-  border-bottom: 1px solid var(--border);
+/* ---- Mes certifications : médailles compactes ---- */
+.my-certs-strip {
+  display: flex; flex-wrap: wrap; gap: 10px;
   padding: 16px 18px;
 }
-.cert-row:last-child { border-bottom: none; }
-.cert-row-head {
-  display: flex; align-items: flex-start; gap: 14px;
-  margin-bottom: 10px;
+.my-certs-strip .empty-state { width: 100%; }
+.medal {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(180deg, var(--bg-3) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px 10px 10px;
+  min-width: 220px; max-width: 320px;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset;
+  transition: transform .15s, border-color .15s;
 }
-.cert-row-title { flex: 1; min-width: 0; }
-.cert-row-actions { display: flex; gap: 6px; align-items: center; }
-.cert-row-body {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
-  margin-left: 70px;
+.medal:hover { transform: translateY(-1px); border-color: var(--fg-2); }
+.medal::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--ok); border-radius: var(--radius-sm) 0 0 var(--radius-sm);
 }
-@media (max-width: 720px) {
-  .cert-row-body { grid-template-columns: 1fr; margin-left: 0; }
+.medal-disc {
+  flex-shrink: 0;
+  width: 42px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(circle at 30% 30%, var(--bg-3), var(--bg));
+  border: 1px solid var(--ok);
+  border-radius: 50%;
+  font-family: var(--mono); font-weight: 700; font-size: 11px;
+  letter-spacing: 0.05em; color: var(--ok);
+  box-shadow: 0 0 0 2px var(--bg-2), 0 0 12px rgba(123,224,164,0.15);
+}
+.medal-info { flex: 1; min-width: 0; }
+.medal-name {
+  font-size: 12.5px; font-weight: 600; color: var(--fg);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.medal-meta { font-size: 10.5px; color: var(--dim); margin-top: 2px; }
+
+/* ---- Catalogue : grille de cartes ---- */
+.cert-catalog {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px; padding: 16px 18px;
+}
+.cert-tile {
+  display: flex; flex-direction: column;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  transition: border-color .15s, transform .15s;
+}
+.cert-tile:hover { border-color: var(--border-2); }
+.cert-tile.is-trainer { border-color: rgba(123,224,164,0.35); }
+.cert-tile-head {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel-2) 0%, var(--bg-3) 100%);
+}
+.cert-disc {
+  flex-shrink: 0;
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono); font-weight: 700; font-size: 12px;
+  letter-spacing: 0.05em; color: var(--fg);
+}
+.cert-tile.is-trainer .cert-disc { border-color: var(--ok); color: var(--ok); }
+.cert-tile-title { flex: 1; min-width: 0; }
+.cert-tile-name { font-weight: 600; font-size: 13.5px; color: var(--fg); }
+.cert-tile-desc { font-size: 11.5px; color: var(--dim); margin-top: 4px; line-height: 1.4; }
+.cert-tile-trainer-flag {
+  display: inline-block; margin-top: 6px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em;
+  color: var(--ok); text-transform: uppercase;
+}
+.cert-tile-actions {
+  display: flex; gap: 4px;
+  padding: 10px 14px;
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+.cert-tile-body {
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
 }
 .cert-section-label {
-  display: block; font-size: 10.5px; color: var(--dim);
-  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10.5px; color: var(--dim);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.cert-section-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 6px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 9px;
+  font-family: var(--mono); font-size: 10px; color: var(--fg-2);
 }
 .cert-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .trainer-chip, .holder-chip {
   display: inline-flex; align-items: center; gap: 4px;
-  background: var(--bg-1); border: 1px solid var(--border);
-  border-radius: 12px; padding: 3px 10px;
-  font-size: 11px; color: var(--fg-2);
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 2px 8px;
+  font-size: 10.5px; color: var(--fg-2);
 }
-.holder-chip { background: rgba(111,207,151,0.08); border-color: rgba(111,207,151,0.25); color: var(--ok); }
+.holder-chip {
+  background: rgba(123,224,164,0.06);
+  border-color: rgba(123,224,164,0.22);
+  color: var(--ok);
+}
+.chip-empty {
+  font-size: 11px; color: var(--dim-2); font-style: italic;
+}
 .chip-x {
-  background: none; border: none; color: var(--dim);
-  cursor: pointer; font-size: 14px; line-height: 1; padding: 0;
-  margin-left: 2px;
+  background: none; border: none; color: rgba(123,224,164,0.5);
+  cursor: pointer; font-size: 13px; line-height: 1; padding: 0 0 0 2px;
 }
 .chip-x:hover { color: var(--danger); }
 
-/* Cert pill in formation card */
-.op-cert-pill {
-  display: inline-flex; align-items: center;
-  background: var(--bg-1); border: 1px solid var(--fg-2);
-  border-radius: 4px; padding: 2px 8px;
-  font-family: var(--mono); font-size: 11px; font-weight: 700;
-  letter-spacing: 0.08em; color: var(--fg);
+/* ---- Formations : section groups ---- */
+.formations-group { padding: 8px 0 4px; }
+.formations-group + .formations-group { border-top: 1px solid var(--border); margin-top: 4px; }
+.formations-group-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px 8px;
+  font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--dim);
 }
-.op-subtitle { font-size: 12px; color: var(--dim); margin-top: 2px; }
-.op-card.is-validated { border-color: rgba(111,207,151,0.3); }
-.op-card.is-past { opacity: 0.85; }
-.op-badge.warn { background: rgba(224,179,65,0.15); color: var(--amber, #E0B341); border-color: rgba(224,179,65,0.3); }
+.formations-group-head .dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.formations-group-head .dot.upcoming { background: var(--fg-2); }
+.formations-group-head .dot.todo { background: #E0B341; box-shadow: 0 0 8px rgba(224,179,65,0.4); }
+.formations-group-head .dot.done { background: var(--ok); }
+.formations-group-count {
+  margin-left: auto;
+  font-family: var(--mono); font-size: 11px; color: var(--dim-2);
+}
+
+/* ---- Formation card (distinct from op-card) ---- */
+.formation-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin: 8px 18px;
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.formation-card:hover { border-color: var(--border-2); }
+.formation-card.is-validated { border-color: rgba(123,224,164,0.3); }
+.formation-card.is-todo { border-color: rgba(224,179,65,0.3); }
+.formation-card.is-locked .roster-toggle input { cursor: not-allowed; }
+
+.formation-head {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bg-3);
+  border-bottom: 1px solid var(--border);
+}
+.formation-cert-disc {
+  width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm);
+  font-family: var(--mono); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.05em; color: var(--fg);
+}
+.formation-card.is-validated .formation-cert-disc { border-color: var(--ok); color: var(--ok); }
+.formation-card.is-todo .formation-cert-disc { border-color: #E0B341; color: #E0B341; }
+.formation-headline h4 { font-size: 14px; font-weight: 600; color: var(--fg); }
+.formation-cert-name { font-size: 11.5px; color: var(--dim); margin-top: 2px; }
+.formation-meta {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  font-size: 11px; color: var(--dim); margin-top: 6px;
+}
+.formation-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.formation-meta svg { width: 12px; height: 12px; opacity: 0.7; }
+.formation-status { text-align: right; }
+.formation-status-badge {
+  display: inline-block;
+  padding: 4px 10px; border-radius: 4px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.formation-status-badge.upcoming { background: var(--bg); border: 1px solid var(--border-2); color: var(--fg-2); }
+.formation-status-badge.todo     { background: rgba(224,179,65,0.12); border: 1px solid rgba(224,179,65,0.4); color: #E0B341; }
+.formation-status-badge.done     { background: rgba(123,224,164,0.1); border: 1px solid rgba(123,224,164,0.4); color: var(--ok); }
+.formation-attendees-count {
+  display: block; margin-top: 6px;
+  font-size: 11px; color: var(--dim);
+}
+
+.formation-brief {
+  padding: 10px 16px;
+  font-size: 12.5px; color: var(--fg-2);
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  line-height: 1.5;
+}
+
+.formation-roster {
+  padding: 12px 16px;
+}
+.formation-roster-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.formation-roster-head strong {
+  font-size: 11px; font-weight: 600; color: var(--fg-2);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.formation-roster ul {
+  list-style: none;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 4px;
+}
+.formation-roster li.is-checked .roster-info > div { color: var(--fg); }
+
+.formation-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+}
+.formation-actions .self-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 12px; margin-right: auto;
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer;
+  font-size: 12px; color: var(--fg-2);
+  transition: all .15s;
+}
+.formation-actions .self-toggle:hover { border-color: var(--fg-2); color: var(--fg); }
+.formation-actions .self-toggle input { accent-color: var(--ok); cursor: pointer; }
+.formation-actions .self-toggle.is-on { background: rgba(123,224,164,0.08); border-color: var(--ok); color: var(--ok); }
+
+/* ---- Already-certified marker in roster ---- */
+.formation-roster .already-cert {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9.5px; font-weight: 600;
+  color: var(--ok); margin-left: 6px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+
+/* ---- Cert pill in tables (Personnel) ---- */
+.spec-cell .trainer-chip {
+  font-family: var(--mono); font-weight: 600;
+}
 
 /* Forced password modal */
 .modal-pwd { min-width: 380px; max-width: 92vw; }

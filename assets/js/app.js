@@ -1059,23 +1059,26 @@ function userCerts(userId) {
     .sort((a, b) => a.cert.code.localeCompare(b.cert.code));
 }
 
-// ---- My certifications ----
+// ---- My certifications (medals) ----
 function renderMyCerts() {
   const list = $('myCertsList');
   const mine = userCerts(me.id);
   $('myCertsCount').textContent = mine.length;
   if (mine.length === 0) {
-    list.innerHTML = '<div class="empty-state">Aucune certification obtenue à ce jour.</div>';
+    list.innerHTML = `<div class="empty-state" style="padding:24px;text-align:center;">
+      <div style="font-size:13px;color:var(--dim);">Aucune certification obtenue.</div>
+      <div style="font-size:11.5px;color:var(--dim-2);margin-top:4px;">Tes futures certifications apparaîtront ici après validation par un formateur.</div>
+    </div>`;
     return;
   }
   list.innerHTML = mine.map(({ holder, cert }) => {
     const date = new Date(holder.awardedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
     const awarder = holder.awardedBy ? userById(holder.awardedBy) : null;
-    return `<div class="cert-card">
-      <div class="cert-code">${cert.code}</div>
-      <div class="cert-info">
-        <div class="cert-name">${cert.name}</div>
-        <div class="cert-meta">Obtenue le ${date}${awarder ? ` · validée par ${awarder.name}` : ''}</div>
+    return `<div class="medal" title="${cert.name}">
+      <div class="medal-disc">${cert.code}</div>
+      <div class="medal-info">
+        <div class="medal-name">${cert.name}</div>
+        <div class="medal-meta">${date}${awarder ? ` · ${awarder.name}` : ''}</div>
       </div>
     </div>`;
   }).join('');
@@ -1087,47 +1090,54 @@ function renderCertsCatalog() {
   const certs = db.certifications.all().sort((a, b) => a.code.localeCompare(b.code));
   $('newCertBtn').style.display = isCmd ? 'inline-flex' : 'none';
   if (certs.length === 0) {
-    list.innerHTML = '<div class="empty-state">Aucune certification définie. Le commandement peut en créer dans le catalogue.</div>';
+    list.innerHTML = `<div class="empty-state" style="padding:32px;text-align:center;grid-column:1/-1;">
+      <div style="font-size:13px;color:var(--dim);">Aucune certification définie.</div>
+      ${isCmd ? '<div style="font-size:11.5px;color:var(--dim-2);margin-top:4px;">Cliquez sur <strong>+ Nouvelle</strong> pour commencer.</div>' : ''}
+    </div>`;
     return;
   }
   list.innerHTML = certs.map(c => {
-    const trainers = (c.trainers || []).map(uid => {
-      const u = userById(uid);
-      return u ? `<span class="trainer-chip">${u.name}</span>` : '';
-    }).join('');
+    const trainers = (c.trainers || []);
     const holders = db.certHolders.forCert(c.id);
     const canTrain = isTrainerOf(c);
-    return `<div class="cert-row">
-      <div class="cert-row-head">
-        <div class="cert-code">${c.code}</div>
-        <div class="cert-row-title">
-          <div class="cert-name">${c.name}</div>
-          ${c.description ? `<div class="cert-desc">${c.description}</div>` : ''}
-        </div>
-        <div class="cert-row-actions">
-          ${canTrain ? '<span class="perm-on">✓ Vous formez</span>' : ''}
-          ${isCmd ? `
-            <button class="btn-ghost btn-sm" data-edit-cert="${c.id}">Éditer</button>
-            <button class="btn-danger btn-sm" data-del-cert="${c.id}">Supprimer</button>` : ''}
-        </div>
-      </div>
-      <div class="cert-row-body">
-        <div class="cert-section">
-          <span class="cert-section-label">Formateurs (${(c.trainers || []).length})</span>
-          <div class="cert-chips">${trainers || '<span style="color:var(--dim)">— aucun —</span>'}</div>
-        </div>
-        <div class="cert-section">
-          <span class="cert-section-label">Détenteurs (${holders.length})</span>
-          <div class="cert-chips">${holders.length === 0 ? '<span style="color:var(--dim)">— aucun —</span>' :
-            holders.map(h => {
-              const u = userById(h.userId);
-              return `<span class="holder-chip">
-                ${u ? u.name : h.userId}
-                ${isCmd ? `<button class="chip-x" data-revoke-cert="${c.id}" data-revoke-user="${h.userId}" title="Révoquer">×</button>` : ''}
-              </span>`;
-            }).join('')}</div>
+    const trainersHTML = trainers.length === 0
+      ? '<span class="chip-empty">— aucun formateur désigné —</span>'
+      : trainers.map(uid => {
+          const u = userById(uid);
+          return u ? `<span class="trainer-chip" title="${u.id}">${u.name}</span>` : '';
+        }).join('');
+    const holdersHTML = holders.length === 0
+      ? '<span class="chip-empty">— aucun détenteur —</span>'
+      : holders.map(h => {
+          const u = userById(h.userId);
+          return `<span class="holder-chip">
+            ${u ? u.name : h.userId}
+            ${isCmd ? `<button class="chip-x" data-revoke-cert="${c.id}" data-revoke-user="${h.userId}" title="Révoquer">×</button>` : ''}
+          </span>`;
+        }).join('');
+    return `<div class="cert-tile ${canTrain ? 'is-trainer' : ''}">
+      <div class="cert-tile-head">
+        <div class="cert-disc">${c.code}</div>
+        <div class="cert-tile-title">
+          <div class="cert-tile-name">${c.name}</div>
+          ${c.description ? `<div class="cert-tile-desc">${c.description}</div>` : ''}
+          ${canTrain ? '<div class="cert-tile-trainer-flag">✓ Vous formez</div>' : ''}
         </div>
       </div>
+      <div class="cert-tile-body">
+        <div>
+          <div class="cert-section-label">Formateurs <span class="cert-section-count">${trainers.length}</span></div>
+          <div class="cert-chips">${trainersHTML}</div>
+        </div>
+        <div>
+          <div class="cert-section-label">Détenteurs <span class="cert-section-count">${holders.length}</span></div>
+          <div class="cert-chips">${holdersHTML}</div>
+        </div>
+      </div>
+      ${isCmd ? `<div class="cert-tile-actions">
+        <button class="btn-ghost btn-sm" data-edit-cert="${c.id}" style="flex:1;">Éditer</button>
+        <button class="btn-danger btn-sm" data-del-cert="${c.id}" style="flex:1;">Supprimer</button>
+      </div>` : ''}
     </div>`;
   }).join('');
 
@@ -1245,7 +1255,7 @@ function resetFormationForm() {
   $('formationLocation').value = '';
   $('formationDesc').value = '';
   $('formationFormTitle').textContent = 'Programmer une formation';
-  $('formationCancelBtn').style.display = 'none';
+  $('formationFormPanel').style.display = 'none';
   populateFormationCertSelect();
 }
 function editFormation(id) {
@@ -1262,11 +1272,21 @@ function editFormation(id) {
   $('formationLocation').value = f.location || '';
   $('formationDesc').value = f.description || '';
   $('formationFormTitle').textContent = `Édition — ${f.title}`;
-  $('formationCancelBtn').style.display = '';
+  $('formationFormPanel').style.display = '';
   $('formationFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+if ($('newFormationBtn')) {
+  $('newFormationBtn').addEventListener('click', () => {
+    resetFormationForm();
+    $('formationFormPanel').style.display = '';
+    $('formationFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
 if ($('formationCancelBtn')) {
-  $('formationCancelBtn').addEventListener('click', resetFormationForm);
+  $('formationCancelBtn').addEventListener('click', () => {
+    resetFormationForm();
+    $('formationFormPanel').style.display = 'none';
+  });
 }
 if ($('formationForm')) {
   $('formationForm').addEventListener('submit', async (e) => {
@@ -1298,129 +1318,181 @@ if ($('formationForm')) {
   });
 }
 
-// ---- Formations list ----
+// ---- Formations list (groupées par état) ----
+function renderFormationCard(f) {
+  const cert = db.certifications.find(f.certId);
+  const canTrain = isTrainerOf(cert);
+  const now = new Date();
+  const fDate = new Date(f.date);
+  const isPast = fDate < now;
+  const att = f.attendees || {};
+  const presentIds = Object.keys(att).filter(k => att[k]);
+  const meChecked = !!att[me.id];
+
+  let stateClass = '', statusBadge = '';
+  if (f.validated) {
+    stateClass = 'is-validated';
+    statusBadge = '<span class="formation-status-badge done">✓ Validée</span>';
+  } else if (isPast) {
+    stateClass = 'is-todo';
+    statusBadge = '<span class="formation-status-badge todo">⏱ À valider</span>';
+  } else {
+    statusBadge = '<span class="formation-status-badge upcoming">À venir</span>';
+  }
+  if (f.validated) stateClass += ' is-locked';
+
+  // Roster
+  let rosterHTML = '';
+  if (canTrain && !f.validated) {
+    const activeUsers = db.users.where(u => u.status === 'actif')
+      .sort((a, b) => (gradeOf(a)?.tier || 99) - (gradeOf(b)?.tier || 99));
+    rosterHTML = activeUsers.length === 0
+      ? '<li class="empty-state">Aucun opérateur actif.</li>'
+      : activeUsers.map(u => {
+          const g = gradeOf(u);
+          const checked = !!att[u.id];
+          const hasIt = cert ? db.certHolders.has(u.id, cert.id) : false;
+          return `<li class="roster-editable ${checked ? 'is-checked' : ''}">
+            <label class="roster-toggle">
+              <input type="checkbox" data-form-roster="${f.id}" data-uid="${u.id}" ${checked ? 'checked' : ''}/>
+              <div class="roster-info">
+                <div class="mini-avatar">${initials(u.name)}</div>
+                <div>
+                  <div class="op-id">${u.id} <span style="color:var(--dim);font-size:10px">· ${g ? g.short : '—'}</span>
+                    ${hasIt ? '<span class="already-cert">✓ déjà certifié</span>' : ''}
+                  </div>
+                  <div class="op-name-small">${u.name}</div>
+                </div>
+              </div>
+            </label>
+          </li>`;
+        }).join('');
+  } else {
+    rosterHTML = presentIds.length === 0
+      ? '<li class="empty-state" style="grid-column:1/-1;">Aucun inscrit pour le moment.</li>'
+      : presentIds
+          .map(id => ({ id, u: userById(id) }))
+          .sort((a, b) => {
+            const ga = a.u && gradeOf(a.u); const gb = b.u && gradeOf(b.u);
+            return (ga ? ga.tier : 99) - (gb ? gb.tier : 99);
+          })
+          .map(({ id, u }) => {
+            const g = u ? gradeOf(u) : null;
+            const cls = f.validated ? 'confirm-ok' : 'confirm-pending';
+            const txt = f.validated ? 'Certifié' : 'Inscrit';
+            return `<li>
+              <div class="roster-info">
+                <div class="mini-avatar">${u ? initials(u.name) : '?'}</div>
+                <div>
+                  <div class="op-id">${id} <span style="color:var(--dim);font-size:10px">· ${g ? g.short : '—'}</span></div>
+                  <div class="op-name-small">${u ? u.name : '— inconnu —'}</div>
+                </div>
+              </div>
+              <span class="${cls}">${txt}</span>
+            </li>`;
+          }).join('');
+  }
+
+  // Actions footer
+  const selfToggle = !f.validated && !canTrain ? `
+    <label class="self-toggle ${meChecked ? 'is-on' : ''}">
+      <input type="checkbox" data-form-self="${f.id}" ${meChecked ? 'checked' : ''}/>
+      <span>${meChecked ? '✓ Inscrit·e' : '+ M\'inscrire'}</span>
+    </label>` : '';
+
+  let trainerActions = '';
+  if (canTrain && !f.validated) {
+    trainerActions = `
+      <button class="btn-primary btn-sm" data-form-validate="${f.id}">
+        🎖 Valider — délivrer ${cert?.code || '?'}
+      </button>
+      <button class="btn-ghost btn-sm" data-form-edit="${f.id}">Éditer</button>
+      <button class="btn-danger btn-sm" data-form-delete="${f.id}">Supprimer</button>`;
+  } else if (canTrain && f.validated) {
+    trainerActions = `
+      <button class="btn-ghost btn-sm" data-form-unvalidate="${f.id}">Annuler la validation</button>`;
+  } else if (f.createdBy === me.id && !f.validated) {
+    trainerActions = `<button class="btn-danger btn-sm" data-form-delete="${f.id}">Supprimer</button>`;
+  }
+
+  const dateIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`;
+  const locIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>`;
+
+  return `<article class="formation-card ${stateClass}">
+    <header class="formation-head">
+      <div class="formation-cert-disc" title="${cert ? cert.name : ''}">${cert ? cert.code : '?'}</div>
+      <div class="formation-headline">
+        <h4>${f.title}</h4>
+        ${cert ? `<div class="formation-cert-name">${cert.name}</div>` : ''}
+        <div class="formation-meta">
+          <span>${dateIcon}${fmtDateTime(f.date)}</span>
+          ${f.location ? `<span>${locIcon}${f.location}</span>` : ''}
+        </div>
+      </div>
+      <div class="formation-status">
+        ${statusBadge}
+        <span class="formation-attendees-count">${presentIds.length} inscrit${presentIds.length > 1 ? 's' : ''}</span>
+      </div>
+    </header>
+    ${f.description ? `<div class="formation-brief">${f.description}</div>` : ''}
+    <div class="formation-roster">
+      <div class="formation-roster-head">
+        <strong>${canTrain && !f.validated ? 'Cocher les présents' : (f.validated ? 'Opérateurs certifiés' : 'Inscrits')}</strong>
+      </div>
+      <ul>${rosterHTML}</ul>
+    </div>
+    <footer class="formation-actions">
+      ${selfToggle}
+      ${trainerActions}
+    </footer>
+  </article>`;
+}
+
 function renderFormations() {
-  // Visibility: form panel only if user can train at least one cert
   const canTrainSomething = trainableCerts().length > 0;
-  $('formationFormPanel').style.display = canTrainSomething ? '' : 'none';
+  $('newFormationBtn').style.display = canTrainSomething ? 'inline-flex' : 'none';
   populateFormationCertSelect();
 
   const list = $('formationsList');
-  const formations = db.formations.all()
-    .sort((a, b) => new Date(b.date) - new Date(a.date)); // most recent first
+  const formations = db.formations.all();
   $('formationsCount').textContent = formations.length;
 
   if (formations.length === 0) {
-    list.innerHTML = '<div class="empty-state">Aucune formation programmée.</div>';
+    list.innerHTML = `<div class="empty-state" style="padding:32px;text-align:center;">
+      <div style="font-size:13px;color:var(--dim);">Aucune session programmée.</div>
+      ${canTrainSomething ? '<div style="font-size:11.5px;color:var(--dim-2);margin-top:4px;">Cliquez sur <strong>+ Nouvelle session</strong> pour en créer une.</div>' : ''}
+    </div>`;
     return;
   }
 
-  list.innerHTML = formations.map(f => {
-    const cert = db.certifications.find(f.certId);
-    const canTrain = isTrainerOf(cert);
-    const isPast = new Date(f.date) < new Date();
-    const att = f.attendees || {};
-    const presentIds = Object.keys(att).filter(k => att[k]);
-    const meChecked = !!att[me.id];
+  // Group by state
+  const now = new Date();
+  const upcoming = [], todo = [], done = [];
+  formations.forEach(f => {
+    if (f.validated) done.push(f);
+    else if (new Date(f.date) < now) todo.push(f);
+    else upcoming.push(f);
+  });
+  upcoming.sort((a, b) => new Date(a.date) - new Date(b.date));        // soonest first
+  todo.sort((a, b) => new Date(b.date) - new Date(a.date));            // most recent first
+  done.sort((a, b) => (b.validatedAt || 0) - (a.validatedAt || 0));    // most recently validated
 
-    // Roster: editable for trainers, otherwise only the present list
-    let rosterHTML = '';
-    if (canTrain) {
-      const activeUsers = db.users.where(u => u.status === 'actif')
-        .sort((a, b) => (gradeOf(a)?.tier || 99) - (gradeOf(b)?.tier || 99));
-      rosterHTML = activeUsers.length === 0
-        ? '<li class="empty-state">Aucun opérateur actif.</li>'
-        : activeUsers.map(u => {
-            const g = gradeOf(u);
-            const checked = !!att[u.id];
-            const hasIt = cert ? db.certHolders.has(u.id, cert.id) : false;
-            return `<li class="roster-editable ${checked ? 'is-checked' : ''}">
-              <label class="roster-toggle">
-                <input type="checkbox" data-form-roster="${f.id}" data-uid="${u.id}" ${checked ? 'checked' : ''} ${f.validated ? 'disabled' : ''}/>
-                <div class="roster-info">
-                  <div class="mini-avatar">${initials(u.name)}</div>
-                  <div>
-                    <div class="op-id">${u.id} <span style="color:var(--dim);font-size:10px">· ${g ? g.short : '—'}</span>
-                      ${hasIt ? '<span class="perm-on" style="font-size:10px;margin-left:6px;">✓ déjà certifié</span>' : ''}
-                    </div>
-                    <div class="op-name-small">${u.name}</div>
-                  </div>
-                </div>
-              </label>
-            </li>`;
-          }).join('');
-    } else {
-      rosterHTML = presentIds.length === 0
-        ? '<li class="empty-state">Aucun inscrit pour le moment.</li>'
-        : presentIds
-            .map(id => ({ id, u: userById(id) }))
-            .sort((a, b) => {
-              const ga = a.u && gradeOf(a.u); const gb = b.u && gradeOf(b.u);
-              return (ga ? ga.tier : 99) - (gb ? gb.tier : 99);
-            })
-            .map(({ id, u }) => {
-              const g = u ? gradeOf(u) : null;
-              const cls = f.validated ? 'confirm-ok' : 'confirm-pending';
-              const txt = f.validated ? 'Certifié' : 'Inscrit';
-              return `<li>
-                <div class="roster-info">
-                  <div class="mini-avatar">${u ? initials(u.name) : '?'}</div>
-                  <div>
-                    <div class="op-id">${id} <span style="color:var(--dim);font-size:10px">· ${g ? g.short : '—'}</span></div>
-                    <div class="op-name-small">${u ? u.name : '— inconnu —'}</div>
-                  </div>
-                </div>
-                <span class="${cls}">${txt}</span>
-              </li>`;
-            }).join('');
-    }
+  const groups = [
+    { key: 'todo',     label: 'À valider',                items: todo,     dot: 'todo' },
+    { key: 'upcoming', label: 'À venir',                  items: upcoming, dot: 'upcoming' },
+    { key: 'done',     label: 'Validées · historique',    items: done,     dot: 'done' },
+  ].filter(g => g.items.length > 0);
 
-    // Self-toggle (everyone, except if validated or trainer manages roster)
-    const selfToggle = !f.validated && !canTrain ? `
-      <label class="self-toggle">
-        <input type="checkbox" data-form-self="${f.id}" ${meChecked ? 'checked' : ''}/>
-        <span>${meChecked ? '✓ Inscrit·e' : 'M\'inscrire'}</span>
-      </label>` : '';
-
-    const validationBtns = canTrain && !f.validated ? `
-      <button class="btn-primary btn-sm" data-form-validate="${f.id}">
-        Valider la formation (délivrer ${cert?.code || '?'})
-      </button>` : f.validated && canTrain ? `
-      <button class="btn-ghost btn-sm" data-form-unvalidate="${f.id}">Annuler la validation</button>` : '';
-
-    const editBtn = canTrain && !f.validated ? `
-      <button class="btn-ghost btn-sm" data-form-edit="${f.id}">Éditer</button>` : '';
-    const delBtn = (canTrain || f.createdBy === me.id) ? `
-      <button class="btn-danger btn-sm" data-form-delete="${f.id}">Supprimer</button>` : '';
-
-    return `<article class="op-card ${f.validated ? 'is-validated' : ''} ${isPast && !f.validated ? 'is-past' : ''}">
-      <header class="op-card-head">
-        <div class="op-meta">
-          <span class="op-cert-pill">${cert ? cert.code : '?'}</span>
-          <span class="op-date">${fmtDateTime(f.date)}</span>
-          ${f.location ? `<span class="op-loc">${f.location}</span>` : ''}
-          ${f.validated ? '<span class="op-badge ok">✓ Validée</span>' : ''}
-          ${isPast && !f.validated ? '<span class="op-badge warn">⏱ À valider</span>' : ''}
-        </div>
-        <h4>${f.title}</h4>
-        ${cert ? `<div class="op-subtitle">${cert.name}</div>` : ''}
-        ${f.description ? `<p class="op-brief">${f.description}</p>` : ''}
-      </header>
-      <div class="op-roster">
-        <div class="op-roster-head">
-          <strong>${canTrain ? 'Inscrire les opérateurs présents' : 'Participants'}</strong>
-          <span class="muted">${presentIds.length} inscrit${presentIds.length > 1 ? 's' : ''}</span>
-        </div>
-        <ul>${rosterHTML}</ul>
+  list.innerHTML = groups.map(g => `
+    <div class="formations-group">
+      <div class="formations-group-head">
+        <span class="dot ${g.dot}"></span>
+        <span>${g.label}</span>
+        <span class="formations-group-count">${g.items.length}</span>
       </div>
-      <footer class="op-actions">
-        ${selfToggle}
-        ${validationBtns}
-        ${editBtn}
-        ${delBtn}
-      </footer>
-    </article>`;
-  }).join('');
+      ${g.items.map(renderFormationCard).join('')}
+    </div>
+  `).join('');
 
   // ---- Wire actions ----
   list.querySelectorAll('[data-form-self]').forEach(cb => {
