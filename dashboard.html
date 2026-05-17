@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STRIX // COMMAND TERMINAL</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body class="dash-body">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-mini">
+        <svg viewBox="0 0 64 64" fill="none">
+          <polygon points="32,4 58,18 58,46 32,60 6,46 6,18" stroke="#f4f4f6" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M32 16 L36 28 L48 28 L38 36 L42 48 L32 40 L22 48 L26 36 L16 28 L28 28 Z" fill="#f4f4f6"/>
+        </svg>
+      </div>
+      <div>
+        <h2>STRIX</h2>
+        <span>Command HQ</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-view="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Tableau de bord
+      </button>
+      <button class="nav-item" data-view="ops">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Opérations
+      </button>
+      <button class="nav-item" data-view="absences">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        Absences
+      </button>
+      <button class="nav-item" data-view="personnel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg>
+        Personnel
+      </button>
+      <button class="nav-item" data-view="specs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6z"/></svg>
+        Spécialisations
+      </button>
+      <button class="nav-item" data-view="admin" id="navAdmin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.01a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.01a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Administration
+      </button>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="avatar" id="userAvatar">--</div>
+      <div class="user-info">
+        <strong id="userName">—</strong>
+        <span id="userRank">—</span>
+      </div>
+      <button id="logoutBtn" class="icon-btn" title="Déconnexion">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <main class="dash-main">
+    <header class="topbar">
+      <div>
+        <h1 id="viewTitle">Tableau de bord</h1>
+        <p class="breadcrumb">STRIX &gt; <span id="viewCrumb">OVERVIEW</span></p>
+      </div>
+      <div class="topbar-right">
+        <div class="clock">
+          <span id="clockTime">--:--:--</span>
+          <span id="clockDate">--</span>
+        </div>
+        <div class="status-pill"><i class="dot"></i> ONLINE</div>
+      </div>
+    </header>
+
+    <!-- OVERVIEW -->
+    <section class="view active" id="view-overview">
+      <div class="cards-grid">
+        <div class="stat-card">
+          <span class="stat-label">Effectifs actifs</span>
+          <span class="stat-value" id="statPersonnel">0</span>
+          <span class="stat-sub">opérateurs enregistrés</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Opérations à venir</span>
+          <span class="stat-value" id="statOps">0</span>
+          <span class="stat-sub">programmées</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Présences confirmées</span>
+          <span class="stat-value" id="statPresences">0</span>
+          <span class="stat-sub">toutes opérations</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Niveau d'alerte</span>
+          <span class="stat-value alert">DEFCON 4</span>
+          <span class="stat-sub">posture standard</span>
+        </div>
+      </div>
+
+      <div class="split">
+        <div class="panel">
+          <header class="panel-header">
+            <h3>Mes prochaines opérations</h3>
+            <span class="tag">PERSO</span>
+          </header>
+          <ul class="ops-mini" id="myOpsMini"></ul>
+        </div>
+        <div class="panel">
+          <header class="panel-header">
+            <h3>Journal d'activité</h3>
+            <span class="tag">LIVE</span>
+          </header>
+          <ul class="activity-list" id="activityList"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- OPS -->
+    <section class="view" id="view-ops">
+      <div class="panel" id="opFormPanel">
+        <header class="panel-header">
+          <h3>Planifier une opération</h3>
+          <span class="tag muted-tag">RESPONSABLES UNIQUEMENT</span>
+        </header>
+        <form id="opForm" class="form-grid">
+          <label><span>Nom de code</span><input type="text" id="opName" placeholder="OP. NIGHT RAVEN" required/></label>
+          <label><span>Date &amp; heure</span><input type="datetime-local" id="opDate" required/></label>
+          <label><span>Zone</span><input type="text" id="opZone" placeholder="Secteur Bravo-7" required/></label>
+          <label><span>Priorité</span>
+            <select id="opPriority">
+              <option value="ROUTINE">Routine</option>
+              <option value="PRIORITAIRE">Prioritaire</option>
+              <option value="CRITIQUE">Critique</option>
+            </select>
+          </label>
+          <label class="full"><span>Briefing</span><textarea id="opBrief" rows="2" placeholder="Objectifs, ROE, équipement requis..."></textarea></label>
+          <button type="submit" class="btn-primary">Créer l'opération</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Opérations programmées</h3>
+          <span class="tag" id="opsCount">0</span>
+        </header>
+        <div id="opsList" class="ops-list"></div>
+      </div>
+    </section>
+
+    <!-- ABSENCES -->
+    <section class="view" id="view-absences">
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Déclarer une absence</h3>
+        </header>
+        <form id="absForm" class="form-grid">
+          <label><span>Opérateur</span>
+            <select id="absOperator" required></select>
+          </label>
+          <label><span>Motif</span>
+            <select id="absReason">
+              <option>Permission</option>
+              <option>Médical</option>
+              <option>Mission externe</option>
+              <option>Formation</option>
+              <option>Autre</option>
+            </select>
+          </label>
+          <label><span>Du</span><input type="date" id="absFrom" required/></label>
+          <label><span>Au</span><input type="date" id="absTo" required/></label>
+          <label class="full"><span>Commentaire</span><textarea id="absComment" rows="2"></textarea></label>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Registre des absences</h3>
+          <span class="tag" id="absCount">0</span>
+        </header>
+        <table class="data-table">
+          <thead><tr><th>Opérateur</th><th>Période</th><th>Motif</th><th>Commentaire</th><th></th></tr></thead>
+          <tbody id="absTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PERSONNEL -->
+    <section class="view" id="view-personnel">
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Effectifs STRIX</h3>
+          <span class="tag" id="personnelCount">0</span>
+        </header>
+        <div class="personnel-grid" id="personnelGrid"></div>
+      </div>
+
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Suivi individuel <span style="color:var(--dim);font-weight:400;font-size:11px;margin-left:8px;">Aide à la promotion</span></h3>
+          <span class="tag muted-tag">CONSULTATION</span>
+        </header>
+        <table class="data-table">
+          <thead><tr>
+            <th>Opérateur</th>
+            <th>Grade</th>
+            <th>Spécialisations</th>
+            <th style="text-align:center;">Ops engagées</th>
+            <th style="text-align:center;">Ops validées</th>
+            <th style="text-align:center;">Entraînements</th>
+            <th style="text-align:center;">Absences</th>
+          </tr></thead>
+          <tbody id="personnelStatsTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SPECIALISATIONS -->
+    <section class="view" id="view-specs">
+      <div class="panel" id="specFormPanel">
+        <header class="panel-header">
+          <h3>Créer une spécialisation</h3>
+          <span class="tag muted-tag">COMMANDEMENT</span>
+        </header>
+        <form id="specForm" class="form-grid">
+          <label><span>Nom</span><input type="text" id="specName" placeholder="Tireur de précision" required/></label>
+          <label><span>Responsable</span><select id="specLead"></select></label>
+          <label><span>Adjoint</span><select id="specAdj"></select></label>
+          <label class="full"><span>Description</span><textarea id="specDesc" rows="2" placeholder="Périmètre, objectifs, prérequis..."></textarea></label>
+          <div class="full actions">
+            <button type="submit" class="btn-primary">Créer</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Spécialisations actives</h3>
+          <span class="tag" id="specsCount">0</span>
+        </header>
+        <div id="specsList" class="ops-list"></div>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section class="view" id="view-admin">
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Référentiel des permissions</h3>
+          <span class="tag muted-tag">CONSULTATION</span>
+        </header>
+        <table class="data-table perm-matrix">
+          <thead><tr><th>Action</th><th>Militaires du Rang</th><th>Sous-Off / Officiers</th><th>Direction (CMD)</th></tr></thead>
+          <tbody>
+            <tr><td>Cocher sa propre présence</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>Déclarer sa propre absence</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>Voir tableau / personnel / specs</td><td>✓</td><td>✓</td><td>✓</td></tr>
+            <tr><td>Créer / valider / supprimer une opération</td><td class="muted">selon flag <em>Gestion ops</em></td><td>✓ par défaut</td><td>✓</td></tr>
+            <tr><td>Modifier le roster d'une opération</td><td class="muted">selon flag <em>Gestion ops</em></td><td>✓ par défaut</td><td>✓</td></tr>
+            <tr><td>Déclarer absence pour autrui</td><td class="muted">selon flag <em>Gestion ops</em></td><td>✓ par défaut</td><td>✓</td></tr>
+            <tr><td>Gérer membres + entraînements d'une spé</td><td class="muted">si Resp./Adj. de la spé</td><td class="muted">si Resp./Adj. de la spé</td><td>✓</td></tr>
+            <tr><td>Créer / supprimer une spécialisation</td><td>✗</td><td>✗</td><td>✓</td></tr>
+            <tr><td>Définir Resp. / Adj. de spé</td><td>✗</td><td>✗</td><td>✓</td></tr>
+            <tr><td>Créer / éditer / supprimer un opérateur</td><td>✗</td><td>✗</td><td>✓</td></tr>
+            <tr><td>Activer/désactiver le flag <em>Gestion ops</em></td><td>✗</td><td>✗</td><td>✓</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <header class="panel-header">
+          <h3 id="userFormTitle">Enregistrer un opérateur</h3>
+          <span class="tag muted-tag">COMMANDEMENT UNIQUEMENT</span>
+        </header>
+        <form id="userForm" class="form-grid">
+          <input type="hidden" id="userEditId"/>
+          <label><span>Nom de code</span><input type="text" id="userId" placeholder="RAVEN, WOLF-7, K-09..." required/></label>
+          <label><span>Code d'accès</span><input type="text" id="userPwd" placeholder="********" required/></label>
+          <label><span>Nom complet</span><input type="text" id="userName2" placeholder="J. Mercier" required/></label>
+          <label><span>Grade</span>
+            <select id="userGrade" required></select>
+          </label>
+          <label><span>Statut</span>
+            <select id="userStatus">
+              <option value="actif">Actif</option>
+              <option value="reserve">Réserve</option>
+            </select>
+          </label>
+          <label><span>Rôle dérivé</span>
+            <input type="text" id="userRoleDisplay" disabled placeholder="—"/>
+          </label>
+          <label class="full perm-toggle">
+            <input type="checkbox" id="userCanManageOps"/>
+            <div>
+              <strong>Gestion des opérations</strong>
+              <span>Créer, valider, modifier le roster et supprimer des opérations. Coché par défaut pour Sergent et grades supérieurs ; modifiable individuellement.</span>
+            </div>
+          </label>
+          <div class="full actions">
+            <button type="submit" class="btn-primary">Enregistrer</button>
+            <button type="button" id="userFormCancel" class="btn-ghost" style="display:none;">Annuler</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Annuaire complet</h3>
+        </header>
+        <table class="data-table">
+          <thead><tr><th>Nom de code</th><th>Nom</th><th>Grade</th><th>Catégorie</th><th>Statut</th><th>Gestion ops</th><th></th></tr></thead>
+          <tbody id="userTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="toastStack" class="toast-stack"></div>
+
+  <script src="assets/js/db.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

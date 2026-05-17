@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>STRIX // SECURE TERMINAL</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body class="login-body">
+  <main class="login-wrapper">
+    <section class="login-card">
+      <header class="login-header">
+        <div class="login-logo">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="32,4 58,18 58,46 32,60 6,46 6,18" stroke="#f4f4f6" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M32 16 L36 28 L48 28 L38 36 L42 48 L32 40 L22 48 L26 36 L16 28 L28 28 Z" fill="#f4f4f6"/>
+          </svg>
+        </div>
+        <h1 class="brand">STRIX</h1>
+      </header>
+
+      <form id="loginForm" class="login-form" autocomplete="off">
+        <div class="field">
+          <span class="field-label">Nom de code</span>
+          <input type="text" id="username" name="username" placeholder="Votre nom de code" required />
+        </div>
+        <div class="field">
+          <span class="field-label">Code d'accès</span>
+          <input type="password" id="password" name="password" placeholder="********" required />
+        </div>
+
+        <div class="form-row">
+          <label class="checkbox">
+            <input type="checkbox" id="remember" />
+            <span>MÉMORISER SESSION</span>
+          </label>
+          <span class="security-tag">[ SECURE CHANNEL ]</span>
+        </div>
+
+        <button type="submit" class="btn-primary">Authentifier
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+
+        <p id="loginError" class="error-msg" hidden></p>
+
+        <div class="hint">
+          <strong>CRÉDENTIELS DE DÉMO</strong><br/>
+          <code>STRIX-001</code> / <code>strix2025</code> — Colonel<br/>
+          <code>STRIX-007</code> / <code>raven</code> — Capitaine<br/>
+          <code>STRIX-042</code> / <code>operateur</code> — Caporal-Chef
+        </div>
+      </form>
+
+      <footer class="login-footer">
+        <span>TERMINAL v2.4.1</span>
+        <span class="status"><i class="dot"></i> RÉSEAU OPÉRATIONNEL</span>
+      </footer>
+    </section>
+  </main>
+
+  <script src="assets/js/db.js"></script>
+  <script src="assets/js/auth.js"></script>
+</body>
+</html>

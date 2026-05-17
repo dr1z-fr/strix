@@ -1,0 +1,77 @@
+-- =========================================================
+-- STRIX // SUPABASE POSTGRES SCHEMA
+-- À exécuter une seule fois dans le SQL Editor Supabase.
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS users (
+  id              TEXT PRIMARY KEY,
+  password_hash   TEXT NOT NULL,
+  name            TEXT NOT NULL,
+  grade           TEXT NOT NULL,
+  role            TEXT NOT NULL CHECK (role IN ('cmd','lead','op')),
+  status          TEXT NOT NULL DEFAULT 'actif' CHECK (status IN ('actif','reserve')),
+  can_manage_ops  BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+-- Migration : ajout de la colonne pour les bases existantes
+ALTER TABLE users ADD COLUMN IF NOT EXISTS can_manage_ops BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS ops (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  date          TIMESTAMPTZ NOT NULL,
+  zone          TEXT NOT NULL,
+  priority      TEXT NOT NULL,
+  brief         TEXT,
+  created_by    TEXT REFERENCES users(id) ON DELETE SET NULL,
+  presences     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  validated     BOOLEAN NOT NULL DEFAULT false,
+  validated_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS ops_date_idx ON ops (date);
+
+CREATE TABLE IF NOT EXISTS absences (
+  id           TEXT PRIMARY KEY,
+  operator     TEXT REFERENCES users(id) ON DELETE CASCADE,
+  from_date    DATE NOT NULL,
+  to_date      DATE NOT NULL,
+  reason       TEXT NOT NULL,
+  comment      TEXT,
+  declared_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+  ts           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS specializations (
+  id           TEXT PRIMARY KEY,
+  name         TEXT NOT NULL,
+  description  TEXT,
+  lead_id      TEXT REFERENCES users(id) ON DELETE SET NULL,
+  adj_id       TEXT REFERENCES users(id) ON DELETE SET NULL,
+  members      JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS trainings (
+  id           TEXT PRIMARY KEY,
+  spec_id      TEXT REFERENCES specializations(id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  date         TIMESTAMPTZ NOT NULL,
+  description  TEXT,
+  attendees    JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_by   TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS log (
+  id    BIGSERIAL PRIMARY KEY,
+  ts    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  text  TEXT NOT NULL,
+  pill  TEXT,
+  who   TEXT
+);
+CREATE INDEX IF NOT EXISTS log_ts_idx ON log (ts DESC);
+
+-- L'utilisateur initial "Drui" (Colonel) sera créé automatiquement par
+-- l'API au premier login si la table users est vide.
+-- Mot de passe par défaut : strix2025
