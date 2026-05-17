@@ -853,6 +853,7 @@ function resetUserForm() {
   $('userId').value = '';
   $('userId').disabled = false;
   $('userPwd').value = '';
+  $('userPwd').placeholder = '********';
   $('userName2').value = '';
   $('userGrade').value = 'recrue';
   $('userStatus').value = 'actif';
@@ -882,6 +883,7 @@ userForm?.addEventListener('submit', (e) => {
     canManageOps: $('userCanManageOps').checked,
   };
   if (!data.id || data.id.length < 2) { toast('Nom de code requis'); return; }
+  if (!editId && !data.password) { toast('Code d\'accès requis à la création'); return; }
 
   if (editId) {
     // Don't overwrite password if blank on edit
