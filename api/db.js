@@ -64,9 +64,9 @@ async function bootstrapIfEmpty(db) {
   if (rows[0].c === 0) {
     const hash = await bcrypt.hash('strix2025', 10);
     await db.query(
-      `INSERT INTO users (id, password_hash, name, grade, role, status, can_manage_ops)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      ['Drui', hash, 'Drui', 'colonel', 'cmd', 'actif', true]
+      `INSERT INTO users (id, password_hash, name, grade, role, status, can_manage_ops, must_change_password)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      ['Drui', hash, 'Drui', 'colonel', 'cmd', 'actif', true, true]
     );
     return true;
   }
@@ -104,6 +104,7 @@ const log2cam = l => ({
 const user2cam = u => ({
   id: u.id, name: u.name, grade: u.grade, role: u.role, status: u.status,
   canManageOps: !!u.can_manage_ops,
+  mustChangePassword: !!u.must_change_password,
 });
 
 // ---- Permission helpers (server-authoritative) ----
@@ -130,7 +131,7 @@ export default async function handler(req, res) {
       if (!id || !password) return res.status(400).json({ error: 'missing_fields' });
       await bootstrapIfEmpty(db);
       const { rows } = await db.query(
-        `SELECT id, password_hash, name, grade, role, status, can_manage_ops
+        `SELECT id, password_hash, name, grade, role, status, can_manage_ops, must_change_password
          FROM users WHERE id = $1`, [id]
       );
       const u = rows[0];
@@ -163,7 +164,7 @@ export default async function handler(req, res) {
     // Re-validate against DB (status, role drift) using ONE small indexed query.
     // This costs ~1 ms per request but prevents stale-token privilege escalation.
     const { rows: meRows } = await db.query(
-      `SELECT id, name, grade, role, status, can_manage_ops FROM users WHERE id = $1`,
+      `SELECT id, name, grade, role, status, can_manage_ops, must_change_password FROM users WHERE id = $1`,
       [session.uid]
     );
     const me = meRows[0];
@@ -173,7 +174,7 @@ export default async function handler(req, res) {
     // ===== INIT (single roundtrip — hot cache for the whole session) =====
     if (action === 'init') {
       const [users, ops, absences, specs, trainings, log] = await Promise.all([
-        db.query('SELECT id, name, grade, role, status, can_manage_ops FROM users ORDER BY id'),
+        db.query('SELECT id, name, grade, role, status, can_manage_ops, must_change_password FROM users ORDER BY id'),
         db.query('SELECT * FROM ops ORDER BY date'),
         db.query('SELECT * FROM absences ORDER BY ts DESC'),
         db.query('SELECT * FROM specializations ORDER BY name'),
@@ -191,6 +192,18 @@ export default async function handler(req, res) {
       });
     }
 
+    // ===== AUTH — change own password (clears must_change_password flag) =====
+    if (action === 'auth.changePassword') {
+      const { password } = body;
+      if (!password || password.length < 4) return res.status(400).json({ error: 'password_too_short' });
+      const hash = await bcrypt.hash(password, 10);
+      await db.query(
+        `UPDATE users SET password_hash = $1, must_change_password = false WHERE id = $2`,
+        [hash, meCam.id]
+      );
+      return res.json({ ok: true });
+    }
+
     // Hierarchy helpers — tier 1 = highest. "Strictement supérieur" = tier <.
     const meTier = GRADE_TIERS[me.grade] || 99;
     const tierOf = (gradeKey) => GRADE_TIERS[gradeKey] || 99;
@@ -206,8 +219,8 @@ export default async function handler(req, res) {
       const cmo  = r.canManageOps !== undefined ? !!r.canManageOps : defaultCanManageOps(r.grade);
       const hash = await bcrypt.hash(r.password || 'changeme', 10);
       await db.query(
-        `INSERT INTO users (id, password_hash, name, grade, role, status, can_manage_ops)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+        `INSERT INTO users (id, password_hash, name, grade, role, status, can_manage_ops, must_change_password)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,true)`,
         [r.id, hash, r.name, r.grade, role, r.status || 'actif', cmo]
       );
       return res.json({ ok: true });
@@ -240,6 +253,13 @@ export default async function handler(req, res) {
       if (patch.password) {
         const h = await bcrypt.hash(patch.password, 10);
         fields.push(`password_hash = $${i++}`); values.push(h);
+        // Admin-forced password reset → target must change it on next login
+        // (unless admin resets their own password via this path)
+        if (id !== meCam.id) {
+          fields.push(`must_change_password = $${i++}`); values.push(true);
+        } else {
+          fields.push(`must_change_password = $${i++}`); values.push(false);
+        }
       }
       values.push(id);
       if (fields.length) await db.query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${i}`, values);

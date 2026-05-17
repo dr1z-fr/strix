@@ -1083,4 +1083,75 @@ window.STRIX.toast = toast;
   db.setRenderCallback(renderAll);
 
   renderAll();
+
+  // First-login mandatory password change
+  if (me.mustChangePassword) {
+    forcePasswordChange();
+  }
 })();
+
+// =========================================================
+//                  FIRST-LOGIN PASSWORD CHANGE
+// =========================================================
+function forcePasswordChange() {
+  const back = document.createElement('div');
+  back.className = 'modal-backdrop';
+  back.innerHTML = `
+    <div class="modal modal-pwd">
+      <header>Changement de code obligatoire</header>
+      <div class="modal-body">
+        <p style="margin:0 0 12px 0; color:var(--dim); font-size:12.5px; line-height:1.5;">
+          Première connexion détectée. Définis un nouveau code d'accès personnel avant d'accéder au terminal.
+        </p>
+        <label style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+          <span style="font-size:11px; color:var(--dim); letter-spacing:0.1em; text-transform:uppercase;">Nouveau code</span>
+          <input type="password" id="newPwd1" autocomplete="new-password" required minlength="4" style="padding:10px 12px;"/>
+        </label>
+        <label style="display:flex; flex-direction:column; gap:6px;">
+          <span style="font-size:11px; color:var(--dim); letter-spacing:0.1em; text-transform:uppercase;">Confirmation</span>
+          <input type="password" id="newPwd2" autocomplete="new-password" required minlength="4" style="padding:10px 12px;"/>
+        </label>
+        <div id="pwdError" style="margin-top:10px; color:var(--danger); font-size:12px; min-height:14px;"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary" id="pwdSubmit">Confirmer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(back);
+
+  // Block interaction with the rest of the UI
+  back.style.zIndex = '9999';
+
+  const submit = back.querySelector('#pwdSubmit');
+  const p1 = back.querySelector('#newPwd1');
+  const p2 = back.querySelector('#newPwd2');
+  const err = back.querySelector('#pwdError');
+  p1.focus();
+
+  async function apply() {
+    err.textContent = '';
+    const v1 = p1.value;
+    const v2 = p2.value;
+    if (v1.length < 4) { err.textContent = 'Au moins 4 caractères'; return; }
+    if (v1 !== v2)     { err.textContent = 'Les deux codes ne correspondent pas'; return; }
+    if (v1 === 'strix2025') { err.textContent = 'Choisis un code différent du code par défaut'; return; }
+    submit.disabled = true;
+    submit.textContent = 'Mise à jour…';
+    try {
+      await db.auth.changePassword(v1);
+      logAction('Code d\'accès personnel mis à jour', 'AUTH');
+      toast('Code d\'accès enregistré');
+      back.remove();
+    } catch (e) {
+      err.textContent = e.message || 'Erreur';
+      submit.disabled = false;
+      submit.textContent = 'Confirmer';
+    }
+  }
+  submit.addEventListener('click', apply);
+  [p1, p2].forEach(el => el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); apply(); }
+  }));
+  // Prevent dismissal by clicking the backdrop
+  back.addEventListener('click', (e) => { if (e.target === back) e.stopPropagation(); });
+}

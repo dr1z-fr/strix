@@ -558,6 +558,15 @@ tr.row-locked { background: rgba(255,255,255,0.02); }
 tr.row-locked td { color: var(--dim); }
 tr.row-locked .mono { color: var(--dim-2); }
 
+/* Forced password modal */
+.modal-pwd { min-width: 380px; max-width: 92vw; }
+.modal-pwd input[type="password"] {
+  background: var(--bg-3); border: 1px solid var(--border); color: var(--fg);
+  border-radius: var(--radius-sm); font-family: var(--mono); font-size: 13px;
+  letter-spacing: 0.08em; outline: none; transition: border-color .15s;
+}
+.modal-pwd input[type="password"]:focus { border-color: var(--fg-2); }
+
 /* Permission matrix table */
 .perm-matrix td { font-size: 12px; }
 .perm-matrix td.muted { color: var(--dim); font-size: 11px; }

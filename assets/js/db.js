@@ -66,6 +66,7 @@
     not_found: 'Élément introuvable',
     session_invalid: 'Session invalide',
     unauthorized: 'Non autorisé',
+    password_too_short: 'Mot de passe trop court (4 caractères minimum)',
   };
   function humanError(code) { return ERROR_MAP[code] || code; }
 
@@ -224,6 +225,10 @@
       tokenStore.set(data.token, remember);
       cache.me = data.user;
       return data.user;
+    },
+    async changePassword(newPassword) {
+      await api('auth.changePassword', { password: newPassword });
+      if (cache.me) cache.me.mustChangePassword = false;
     },
     logout() {
       tokenStore.clear();

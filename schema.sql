@@ -11,10 +11,12 @@ CREATE TABLE IF NOT EXISTS users (
   role            TEXT NOT NULL CHECK (role IN ('cmd','lead','op')),
   status          TEXT NOT NULL DEFAULT 'actif' CHECK (status IN ('actif','reserve')),
   can_manage_ops  BOOLEAN NOT NULL DEFAULT FALSE,
+  must_change_password BOOLEAN NOT NULL DEFAULT TRUE,
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
--- Migration : ajout de la colonne pour les bases existantes
+-- Migrations : ajout des colonnes pour les bases existantes
 ALTER TABLE users ADD COLUMN IF NOT EXISTS can_manage_ops BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS ops (
   id            TEXT PRIMARY KEY,
