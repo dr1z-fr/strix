@@ -309,7 +309,7 @@ export default async function handler(req, res) {
         [r.id, r.name, r.date, r.zone, r.priority, r.brief, meCam.id,
          JSON.stringify(r.presences || {}), false, null]
       );
-      notifyOpCreated(r, meCam.name); // fire-and-forget
+      await notifyOpCreated(r, meCam.name);
       return res.json({ ok: true });
     }
     if (action === 'ops.update') {
@@ -359,7 +359,7 @@ export default async function handler(req, res) {
       const { rows: opRows } = await db.query('SELECT id, name, date, zone FROM ops WHERE id = $1', [body.id]);
       const opToDelete = opRows[0];
       await db.query('DELETE FROM ops WHERE id = $1', [body.id]);
-      if (opToDelete) notifyOpDeleted({
+      if (opToDelete) await notifyOpDeleted({
         ...opToDelete,
         date: opToDelete.date.toISOString(),
       }, meCam.name);
@@ -378,7 +378,7 @@ export default async function handler(req, res) {
         [r.id, r.operator, r.from, r.to, r.reason, r.comment, meCam.id, r.ts || Date.now()]
       );
       const { rows: nameRows } = await db.query('SELECT name FROM users WHERE id = $1', [r.operator]);
-      notifyAbsenceCreated(r, nameRows[0]?.name || r.operator, meCam.name);
+      await notifyAbsenceCreated(r, nameRows[0]?.name || r.operator, meCam.name);
       return res.json({ ok: true });
     }
     if (action === 'absences.delete') {
@@ -394,7 +394,7 @@ export default async function handler(req, res) {
         return res.status(403).json({ error: 'forbidden' });
       }
       await db.query('DELETE FROM absences WHERE id = $1', [body.id]);
-      notifyAbsenceDeleted({
+      await notifyAbsenceDeleted({
         from: a.from_date instanceof Date ? a.from_date.toISOString().slice(0, 10) : String(a.from_date).slice(0, 10),
         to:   a.to_date   instanceof Date ? a.to_date.toISOString().slice(0, 10)   : String(a.to_date).slice(0, 10),
         reason: a.reason,

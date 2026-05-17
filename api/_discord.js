@@ -28,9 +28,17 @@ function fmtDay(d) {
 }
 
 async function send(webhookUrl, embed) {
-  if (!webhookUrl) return;
+  if (!webhookUrl) {
+    console.warn('[discord] no webhook url configured — skip');
+    return;
+  }
+  const url = webhookUrl.trim();
+  if (!/^https:\/\/(discord|discordapp)\.com\/api\/webhooks\//.test(url)) {
+    console.error('[discord] invalid webhook URL format:', url.slice(0, 60));
+    return;
+  }
   try {
-    await fetch(webhookUrl, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -38,8 +46,14 @@ async function send(webhookUrl, embed) {
         embeds: [embed],
       }),
     });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      console.error(`[discord] HTTP ${res.status}:`, txt.slice(0, 200));
+    } else {
+      console.log('[discord] embed sent OK');
+    }
   } catch (err) {
-    console.error('[discord] post failed:', err.message);
+    console.error('[discord] post failed:', err.message, '| cause:', err.cause?.code || err.cause?.message || err.cause);
   }
 }
 
