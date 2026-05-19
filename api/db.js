@@ -509,8 +509,16 @@ export default async function handler(req, res) {
     }
     if (action === 'trainings.update') {
       const spec = await getSpecForTraining(body.id);
-      if (!isSpecManagerOf(spec)) return res.status(403).json({ error: 'forbidden' });
       const r = body.patch;
+      const isSelfAttendanceOnly = r && Object.keys(r).length === 1 && r.attendees !== undefined;
+      const isSpecMember = spec && (
+        (spec.members || []).includes(meCam.id) ||
+        spec.lead_id === meCam.id ||
+        spec.adj_id === meCam.id
+      );
+      if (!isSpecManagerOf(spec) && !(isSelfAttendanceOnly && isSpecMember)) {
+        return res.status(403).json({ error: 'forbidden' });
+      }
       const fields = []; const values = []; let i = 1;
       if (r.attendees !== undefined) { fields.push(`attendees = $${i++}::jsonb`); values.push(JSON.stringify(r.attendees)); }
       values.push(body.id);
