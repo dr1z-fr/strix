@@ -935,24 +935,29 @@ optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); l
 
 /* =================== MOBILE RESPONSIVE =================== */
 @media (max-width: 768px) {
-  /* Layout: sidebar becomes bottom nav */
-  .dash-body {
-    grid-template-columns: 1fr;
-  }
+  /* Layout */
+  .dash-body { grid-template-columns: 1fr; }
+
+  /* Sidebar → bottom tab bar */
   .sidebar {
     position: fixed;
-    bottom: 0; left: 0; right: 0;
+    top: auto;          /* override sticky top:0 — sans ça la sidebar s'étire sur tout l'écran */
+    bottom: 0;
+    left: 0;
+    right: 0;
     height: auto;
     flex-direction: row;
     border-right: none;
     border-top: 1px solid var(--border);
     z-index: 200;
     background: var(--bg-2);
-    box-shadow: 0 -4px 24px rgba(0,0,0,0.3);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.35);
   }
-  .sidebar-brand, .sidebar-user { display: none; }
+  .sidebar-brand,
+  .sidebar-user { display: none; }
   .sidebar-nav {
     flex-direction: row;
+    align-items: center;
     padding: 4px 4px env(safe-area-inset-bottom, 4px);
     gap: 0;
     overflow-x: auto;
@@ -963,47 +968,45 @@ optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); l
   .sidebar-nav::-webkit-scrollbar { display: none; }
   .nav-item {
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
     gap: 2px;
-    padding: 6px 4px;
+    padding: 7px 4px;
     flex: 1;
     min-width: 44px;
     border-radius: 6px;
     font-size: 9px;
     letter-spacing: 0;
     text-align: center;
-    justify-content: center;
-    align-items: center;
+    border-color: transparent;
   }
   .nav-item svg { width: 20px; height: 20px; }
 
-  /* Main */
-  .dash-main { padding: 16px 14px 84px; }
+  /* Main content — padding-bottom = bottom nav height + safe area */
+  .dash-main { padding: 16px 14px 86px; }
 
   /* Topbar */
-  .topbar { flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .topbar { flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .topbar h1 { font-size: 18px; }
-  .topbar-right { gap: 10px; }
+  .topbar-right { gap: 8px; }
   .clock #clockDate { display: none; }
 
-  /* Stats row */
+  /* KPI stats */
   .stats-row { grid-template-columns: repeat(2, 1fr); }
 
-  /* Tables: scrollable */
-  .data-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
-  .data-table th, .data-table td { white-space: nowrap; }
+  /* Tables — horizontal scroll */
+  .data-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .data-table th,
+  .data-table td { white-space: nowrap; }
 
-  /* Op/Spec presence grid */
+  /* Grids */
   .op-presence { grid-template-columns: 1fr; }
-
-  /* Form grids */
+  .split { grid-template-columns: 1fr; }
   .form-grid { grid-template-columns: 1fr; }
   .form-grid .full.actions { flex-direction: column; }
   .form-grid .full.actions button { width: 100%; }
 
-  /* Splits */
-  .split { grid-template-columns: 1fr; }
-
-  /* Personnel grid */
+  /* Personnel */
   .personnel-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .person-card { padding: 14px 10px; }
 
@@ -1011,35 +1014,35 @@ optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); l
   .cert-catalog { grid-template-columns: 1fr; }
   .my-certs-strip { flex-wrap: wrap; gap: 8px; }
 
-  /* Formation cards */
+  /* Formations */
   .formations-group { gap: 10px; }
   .formation-card { padding: 12px; }
   .formation-card-head { flex-wrap: wrap; gap: 8px; }
   .formation-card-actions { flex-wrap: wrap; }
 
-  /* Panel padding */
+  /* Panels */
   .panel-header { padding: 12px 14px; }
-  .panel-body { padding: 14px; }
-
-  /* Modals */
-  .modal-box { width: calc(100vw - 20px); max-height: 85vh; overflow-y: auto; }
-
-  /* Toast */
-  .toast-stack { bottom: 90px; right: 10px; left: 10px; }
-  .toast { font-size: 12px; }
+  .panel-body { padding: 12px 14px; }
 
   /* Op cards */
   .op-card-head { flex-wrap: wrap; gap: 8px; }
   .op-actions { flex-wrap: wrap; }
+
+  /* Modals */
+  .modal-box { width: calc(100vw - 20px); max-height: 85vh; overflow-y: auto; }
+
+  /* Toasts */
+  .toast-stack { bottom: 86px; right: 10px; left: 10px; }
+  .toast { font-size: 12px; }
 }
 
+/* Très petits écrans : labels masqués, icônes only */
 @media (max-width: 480px) {
   .nav-label { display: none; }
   .nav-item { padding: 10px 4px; min-width: 40px; }
   .nav-item svg { width: 22px; height: 22px; }
+  .dash-main { padding: 12px 10px 74px; }
+  .topbar h1 { font-size: 16px; }
   .stats-row { grid-template-columns: repeat(2, 1fr); }
   .personnel-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .cert-catalog { grid-template-columns: 1fr; }
-  .topbar h1 { font-size: 16px; }
-  .dash-main { padding: 12px 10px 80px; }
 }
