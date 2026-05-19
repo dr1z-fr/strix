@@ -932,3 +932,114 @@ optgroup {
   color: var(--dim); background: var(--bg);
 }
 optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); letter-spacing: 0; }
+
+/* =================== MOBILE RESPONSIVE =================== */
+@media (max-width: 768px) {
+  /* Layout: sidebar becomes bottom nav */
+  .dash-body {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: auto;
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid var(--border);
+    z-index: 200;
+    background: var(--bg-2);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.3);
+  }
+  .sidebar-brand, .sidebar-user { display: none; }
+  .sidebar-nav {
+    flex-direction: row;
+    padding: 4px 4px env(safe-area-inset-bottom, 4px);
+    gap: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    width: 100%;
+  }
+  .sidebar-nav::-webkit-scrollbar { display: none; }
+  .nav-item {
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 4px;
+    flex: 1;
+    min-width: 44px;
+    border-radius: 6px;
+    font-size: 9px;
+    letter-spacing: 0;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+  }
+  .nav-item svg { width: 20px; height: 20px; }
+
+  /* Main */
+  .dash-main { padding: 16px 14px 84px; }
+
+  /* Topbar */
+  .topbar { flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .topbar h1 { font-size: 18px; }
+  .topbar-right { gap: 10px; }
+  .clock #clockDate { display: none; }
+
+  /* Stats row */
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+
+  /* Tables: scrollable */
+  .data-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+  .data-table th, .data-table td { white-space: nowrap; }
+
+  /* Op/Spec presence grid */
+  .op-presence { grid-template-columns: 1fr; }
+
+  /* Form grids */
+  .form-grid { grid-template-columns: 1fr; }
+  .form-grid .full.actions { flex-direction: column; }
+  .form-grid .full.actions button { width: 100%; }
+
+  /* Splits */
+  .split { grid-template-columns: 1fr; }
+
+  /* Personnel grid */
+  .personnel-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .person-card { padding: 14px 10px; }
+
+  /* Certifications */
+  .cert-catalog { grid-template-columns: 1fr; }
+  .my-certs-strip { flex-wrap: wrap; gap: 8px; }
+
+  /* Formation cards */
+  .formations-group { gap: 10px; }
+  .formation-card { padding: 12px; }
+  .formation-card-head { flex-wrap: wrap; gap: 8px; }
+  .formation-card-actions { flex-wrap: wrap; }
+
+  /* Panel padding */
+  .panel-header { padding: 12px 14px; }
+  .panel-body { padding: 14px; }
+
+  /* Modals */
+  .modal-box { width: calc(100vw - 20px); max-height: 85vh; overflow-y: auto; }
+
+  /* Toast */
+  .toast-stack { bottom: 90px; right: 10px; left: 10px; }
+  .toast { font-size: 12px; }
+
+  /* Op cards */
+  .op-card-head { flex-wrap: wrap; gap: 8px; }
+  .op-actions { flex-wrap: wrap; }
+}
+
+@media (max-width: 480px) {
+  .nav-label { display: none; }
+  .nav-item { padding: 10px 4px; min-width: 40px; }
+  .nav-item svg { width: 22px; height: 22px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .personnel-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cert-catalog { grid-template-columns: 1fr; }
+  .topbar h1 { font-size: 16px; }
+  .dash-main { padding: 12px 10px 80px; }
+}

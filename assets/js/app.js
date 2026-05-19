@@ -14,6 +14,7 @@ let me = null;
 let myGrade = null;
 let isLeader = false;
 let isCmd    = false;
+let canManageCerts = false;
 
 // ---- Helpers ----
 const $ = id => document.getElementById(id);
@@ -458,6 +459,12 @@ function renderPersonnelStatsTable() {
           ? '<span style="color:var(--dim-2)">—</span>'
           : cs.map(({ cert }) => `<span class="trainer-chip" style="font-family:var(--mono);font-weight:600;" title="${cert.name}">${cert.code}</span>`).join(' ');
       })()}</div></td>
+      <td><div class="spec-cell">${(() => {
+        const tc = db.certifications.all().filter(c => c.trainers && c.trainers.includes(u.id));
+        return tc.length === 0
+          ? '<span style="color:var(--dim-2)">—</span>'
+          : tc.map(c => `<span class="trainer-chip is-trainer" style="font-family:var(--mono);font-weight:600;color:var(--ok);" title="${c.name}">${c.code}</span>`).join(' ');
+      })()}</div></td>
       <td style="text-align:center;font-family:var(--mono);">${s.engaged}</td>
       <td style="text-align:center;font-family:var(--mono);color:${s.validated > 0 ? 'var(--ok)' : 'var(--dim)'};font-weight:600;">${s.validated}</td>
       <td style="text-align:center;font-family:var(--mono);">${s.trainings}</td>
@@ -616,19 +623,35 @@ function renderSpecs() {
             </div>
             ${t.description ? `<div class="training-desc">${t.description}</div>` : ''}
             <div class="training-attendees">
-              ${manage ? allUsers.filter(u => spec.members.includes(u.id) || u.id === spec.leadId || u.id === spec.adjId)
-                  .map(u => {
+              ${(() => {
+                const specUsers = allUsers.filter(u => spec.members.includes(u.id) || u.id === spec.leadId || u.id === spec.adjId);
+                if (manage) {
+                  return specUsers.map(u => {
                     const isPresent = attendees.includes(u.id);
                     return `<label class="attendee-toggle ${isPresent ? 'is-checked' : ''}">
                       <input type="checkbox" data-train-attendee="${t.id}" data-uid="${u.id}" ${isPresent ? 'checked' : ''}/>
                       <span>${u.name}</span>
                     </label>`;
-                  }).join('')
-                : attendees.map(uid => {
+                  }).join('');
+                }
+                const isMember = specUsers.some(u => u.id === me.id);
+                if (!isMember) {
+                  return attendees.map(uid => {
                     const u = userById(uid);
                     return `<span class="attendee-pill">${u ? u.name : uid}</span>`;
-                  }).join(' ')
-              }
+                  }).join(' ');
+                }
+                return specUsers.map(u => {
+                  const isPresent = attendees.includes(u.id);
+                  if (u.id === me.id) {
+                    return `<label class="attendee-toggle ${isPresent ? 'is-checked' : ''}">
+                      <input type="checkbox" data-train-attendee="${t.id}" data-uid="${u.id}" ${isPresent ? 'checked' : ''}/>
+                      <span>${u.name}</span>
+                    </label>`;
+                  }
+                  return isPresent ? `<span class="attendee-pill">${u.name}</span>` : '';
+                }).join('');
+              })()}
             </div>
           </li>`;
         }).join('');
@@ -749,7 +772,9 @@ function renderSpecs() {
       const t = db.trainings.find(tid);
       if (!t) return;
       const spec = db.specializations.find(t.specId);
-      if (!canManageSpec(spec)) return;
+      const isSelf = uid === me.id;
+      const isMember = spec && (spec.members.includes(me.id) || spec.leadId === me.id || spec.adjId === me.id);
+      if (!canManageSpec(spec) && !(isSelf && isMember)) return;
       const set = new Set(t.attendees || []);
       if (e.target.checked) set.add(uid); else set.delete(uid);
       db.trainings.update(tid, { attendees: Array.from(set) });
@@ -1046,7 +1071,7 @@ function renderOverview() {
 // =========================================================
 function isTrainerOf(cert) {
   if (!cert) return false;
-  if (isCmd) return true;
+  if (canManageCerts) return true;
   return Array.isArray(cert.trainers) && cert.trainers.includes(me.id);
 }
 function trainableCerts() {
@@ -1088,11 +1113,11 @@ function renderMyCerts() {
 function renderCertsCatalog() {
   const list = $('certsList');
   const certs = db.certifications.all().sort((a, b) => a.code.localeCompare(b.code));
-  $('newCertBtn').style.display = isCmd ? 'inline-flex' : 'none';
+  $('newCertBtn').style.display = canManageCerts ? 'inline-flex' : 'none';
   if (certs.length === 0) {
     list.innerHTML = `<div class="empty-state" style="padding:32px;text-align:center;grid-column:1/-1;">
       <div style="font-size:13px;color:var(--dim);">Aucune certification définie.</div>
-      ${isCmd ? '<div style="font-size:11.5px;color:var(--dim-2);margin-top:4px;">Cliquez sur <strong>+ Nouvelle</strong> pour commencer.</div>' : ''}
+      ${canManageCerts ? '<div style="font-size:11.5px;color:var(--dim-2);margin-top:4px;">Cliquez sur <strong>+ Nouvelle</strong> pour commencer.</div>' : ''}
     </div>`;
     return;
   }
@@ -1112,7 +1137,7 @@ function renderCertsCatalog() {
           const u = userById(h.userId);
           return `<span class="holder-chip">
             ${u ? u.name : h.userId}
-            ${isCmd ? `<button class="chip-x" data-revoke-cert="${c.id}" data-revoke-user="${h.userId}" title="Révoquer">×</button>` : ''}
+            ${canManageCerts ? `<button class="chip-x" data-revoke-cert="${c.id}" data-revoke-user="${h.userId}" title="Révoquer">×</button>` : ''}
           </span>`;
         }).join('');
     return `<div class="cert-tile ${canTrain ? 'is-trainer' : ''}">
@@ -1134,7 +1159,7 @@ function renderCertsCatalog() {
           <div class="cert-chips">${holdersHTML}</div>
         </div>
       </div>
-      ${isCmd ? `<div class="cert-tile-actions">
+      ${canManageCerts ? `<div class="cert-tile-actions">
         <button class="btn-ghost btn-sm" data-edit-cert="${c.id}" style="flex:1;">Éditer</button>
         <button class="btn-danger btn-sm" data-del-cert="${c.id}" style="flex:1;">Supprimer</button>
       </div>` : ''}
@@ -1214,7 +1239,7 @@ if ($('certCancelBtn')) {
 if ($('certForm')) {
   $('certForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!isCmd) return;
+    if (!canManageCerts) return;
     const editId = $('certEditId').value;
     const code = $('certCode').value.trim().toUpperCase();
     const name = $('certName').value.trim();
@@ -1604,6 +1629,7 @@ window.STRIX.toast = toast;
   myGrade = db.gradeByKey(me.grade) || { label: '—', appel: '', role: 'op' };
   isLeader = !!me.canManageOps || me.role === 'cmd';
   isCmd    = me.role === 'cmd';
+  canManageCerts = (myGrade?.tier || 99) <= 6;
 
   $('viewTitle').textContent = 'Tableau de bord';
   setupUserPanel();

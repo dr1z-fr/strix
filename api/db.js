@@ -132,6 +132,7 @@ const user2cam = u => ({
 // ---- Permission helpers (server-authoritative) ----
 const isCmd        = me => me.role === 'cmd';
 const canManageOps = me => isCmd(me) || !!me.canManageOps;
+const canManageCerts = me => (GRADE_TIERS[me.grade] || 99) <= 6;
 
 // ---- Main handler ----
 export default async function handler(req, res) {
@@ -542,7 +543,7 @@ export default async function handler(req, res) {
     };
 
     if (action === 'certs.insert') {
-      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      if (!canManageCerts(meCam)) return res.status(403).json({ error: 'forbidden' });
       const r = body.record;
       if (!r?.id || !r?.code || !r?.name) return res.status(400).json({ error: 'invalid_record' });
       await db.query(
@@ -553,7 +554,7 @@ export default async function handler(req, res) {
       return res.json({ ok: true });
     }
     if (action === 'certs.update') {
-      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      if (!canManageCerts(meCam)) return res.status(403).json({ error: 'forbidden' });
       const { id, patch } = body;
       const fields = []; const values = []; let i = 1;
       for (const k of ['code', 'name', 'description']) {
@@ -569,7 +570,7 @@ export default async function handler(req, res) {
       return res.json({ ok: true });
     }
     if (action === 'certs.delete') {
-      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      if (!canManageCerts(meCam)) return res.status(403).json({ error: 'forbidden' });
       // ON DELETE CASCADE handles formations + cert_holders
       await db.query('DELETE FROM certifications WHERE id = $1', [body.id]);
       return res.json({ ok: true });
@@ -577,7 +578,7 @@ export default async function handler(req, res) {
 
     // Revoke a certification from a holder (manual override by CMD)
     if (action === 'certs.revoke') {
-      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      if (!canManageCerts(meCam)) return res.status(403).json({ error: 'forbidden' });
       const { certId, userId } = body;
       await db.query(
         'DELETE FROM cert_holders WHERE cert_id = $1 AND user_id = $2',
