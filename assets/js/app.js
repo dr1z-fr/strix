@@ -79,11 +79,13 @@ function setupUserPanel() {
   $('userRank').textContent = me.role === 'cmd' ? 'Officier supérieur' : me.role === 'lead' ? 'Officier / S-Off' : 'Militaire du Rang';
   $('userAvatar').textContent = initials(me.name);
 
-  $('logoutBtn').addEventListener('click', async () => {
+  const doLogout = async () => {
     if (!await confirmDialog('Déconnexion', 'Confirmer la fin de session ?')) return;
     logAction(`Déconnexion — ${me.name}`, 'AUTH');
     setTimeout(() => { db.auth.logout(); window.location.href = 'index.html'; }, 100);
-  });
+  };
+  $('logoutBtn').addEventListener('click', doLogout);
+  $('logoutBtnMobile')?.addEventListener('click', doLogout);
 
   if (!isCmd) $('navAdmin').style.display = 'none';
   if (!isLeader) $('opFormPanel').style.display = 'none';

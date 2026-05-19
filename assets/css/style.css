@@ -933,6 +933,8 @@ optgroup {
 }
 optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); letter-spacing: 0; }
 
+.mobile-only { display: none; }
+
 /* =================== MOBILE RESPONSIVE =================== */
 @media (max-width: 768px) {
   /* Layout */
@@ -981,6 +983,8 @@ optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); l
     border-color: transparent;
   }
   .nav-item svg { width: 20px; height: 20px; }
+
+  .mobile-only { display: flex; }
 
   /* Main content — padding-bottom = bottom nav height + safe area */
   .dash-main { padding: 16px 14px 86px; }
