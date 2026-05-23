@@ -8,72 +8,17 @@
 </head>
 <body class="dash-body">
 
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <div class="logo-mini">
-        <svg viewBox="0 0 64 64" fill="none">
-          <polygon points="32,4 58,18 58,46 32,60 6,46 6,18" stroke="#f4f4f6" stroke-width="2" stroke-linejoin="round"/>
-          <path d="M32 16 L36 28 L48 28 L38 36 L42 48 L32 40 L22 48 L26 36 L16 28 L28 28 Z" fill="#f4f4f6"/>
-        </svg>
-      </div>
-      <div>
-        <h2>STRIX</h2>
-        <span>Command HQ</span>
-      </div>
-    </div>
-
-    <nav class="sidebar-nav">
-      <button class="nav-item active" data-view="overview">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-        <span class="nav-label">Tableau de bord</span>
-      </button>
-      <button class="nav-item" data-view="ops">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-        <span class="nav-label">Opérations</span>
-      </button>
-      <button class="nav-item" data-view="absences">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        <span class="nav-label">Absences</span>
-      </button>
-      <button class="nav-item" data-view="personnel">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg>
-        <span class="nav-label">Personnel</span>
-      </button>
-      <button class="nav-item" data-view="specs">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6z"/></svg>
-        <span class="nav-label">Spécialisations</span>
-      </button>
-      <button class="nav-item" data-view="formations">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10L12 4 2 10l10 6 10-6z"/><path d="M6 12v5a2 2 0 002 2h8a2 2 0 002-2v-5"/></svg>
-        <span class="nav-label">Formations</span>
-      </button>
-      <button class="nav-item" data-view="docs">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-        <span class="nav-label">Documentation</span>
-      </button>
-      <button class="nav-item" data-view="admin" id="navAdmin">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.01a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.01a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        <span class="nav-label">Administration</span>
-      </button>
-    </nav>
-
-    <div class="sidebar-user">
-      <div class="avatar" id="userAvatar">--</div>
-      <div class="user-info">
-        <strong id="userName">—</strong>
-        <span id="userRank">—</span>
-      </div>
-      <button id="logoutBtn" class="icon-btn" title="Déconnexion">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-      </button>
-    </div>
-  </aside>
-
   <main class="dash-main">
     <header class="topbar">
-      <div>
-        <h1 id="viewTitle">Tableau de bord</h1>
-        <p class="breadcrumb">STRIX &gt; <span id="viewCrumb">OVERVIEW</span></p>
+      <div class="topbar-left">
+        <button id="backToHome" class="back-btn" style="display:none;" title="Retour à l'accueil">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <span>Accueil</span>
+        </button>
+        <div class="topbar-title">
+          <h1 id="viewTitle">STRIX</h1>
+          <p class="breadcrumb">STRIX &gt; <span id="viewCrumb">HOME</span></p>
+        </div>
       </div>
       <div class="topbar-right">
         <div class="clock">
@@ -81,46 +26,100 @@
           <span id="clockDate">--</span>
         </div>
         <div class="status-pill"><i class="dot"></i> ONLINE</div>
-        <button id="logoutBtnMobile" class="icon-btn mobile-only" title="Déconnexion">
+        <div class="topbar-user">
+          <div class="avatar" id="userAvatar">--</div>
+          <div class="user-info">
+            <strong id="userName">—</strong>
+            <span id="userRank">—</span>
+          </div>
+        </div>
+        <button id="logoutBtn" class="icon-btn" title="Déconnexion">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
         </button>
       </div>
     </header>
 
-    <!-- OVERVIEW -->
-    <section class="view active" id="view-overview">
-      <div class="cards-grid">
-        <div class="stat-card">
-          <span class="stat-label">Effectifs actifs</span>
-          <span class="stat-value" id="statPersonnel">0</span>
-          <span class="stat-sub">opérateurs enregistrés</span>
+    <!-- HOME : Springboard tablette -->
+    <section class="view active" id="view-home">
+      <div class="home-hero">
+        <div class="home-hero-logo">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="32,4 58,18 58,46 32,60 6,46 6,18" stroke="#f4f4f6" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M32 16 L36 28 L48 28 L38 36 L42 48 L32 40 L22 48 L26 36 L16 28 L28 28 Z" fill="#f4f4f6"/>
+          </svg>
         </div>
-        <div class="stat-card">
-          <span class="stat-label">Opérations à venir</span>
-          <span class="stat-value" id="statOps">0</span>
-          <span class="stat-sub">programmées</span>
+        <div class="home-hero-text">
+          <h2>STRIX <span class="home-hero-sub">Command Terminal</span></h2>
+          <p id="homeGreeting">Bonjour, opérateur.</p>
         </div>
-        <div class="stat-card">
-          <span class="stat-label">Présences confirmées</span>
-          <span class="stat-value" id="statPresences">0</span>
-          <span class="stat-sub">toutes opérations</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">Niveau d'alerte</span>
-          <span class="stat-value alert">DEFCON 4</span>
-          <span class="stat-sub">posture standard</span>
+        <div class="home-hero-kpis">
+          <div class="kpi-mini"><span class="kpi-mini-val" id="statPersonnel">0</span><span class="kpi-mini-lbl">Actifs</span></div>
+          <div class="kpi-mini"><span class="kpi-mini-val" id="statOps">0</span><span class="kpi-mini-lbl">Ops</span></div>
+          <div class="kpi-mini"><span class="kpi-mini-val" id="statPresences">0</span><span class="kpi-mini-lbl">Présences</span></div>
+          <div class="kpi-mini alert"><span class="kpi-mini-val">DC4</span><span class="kpi-mini-lbl">Alerte</span></div>
         </div>
       </div>
 
-      <div class="split">
-        <div class="panel">
+      <div class="app-grid" id="appGrid">
+        <button class="app-tile" data-view="ops">
+          <div class="app-tile-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          </div>
+          <span class="app-tile-label">Opérations</span>
+          <span class="app-tile-badge" id="badgeOps">0</span>
+        </button>
+        <button class="app-tile" data-view="personnel">
+          <div class="app-tile-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="17" cy="7" r="3"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></svg>
+          </div>
+          <span class="app-tile-label">Personnel</span>
+          <span class="app-tile-badge" id="badgePersonnel">0</span>
+        </button>
+        <button class="app-tile" data-view="absences">
+          <div class="app-tile-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </div>
+          <span class="app-tile-label">Absences</span>
+          <span class="app-tile-badge" id="badgeAbsences">0</span>
+        </button>
+        <button class="app-tile" data-view="specs">
+          <div class="app-tile-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1 3-6z"/></svg>
+          </div>
+          <span class="app-tile-label">Spécialisations</span>
+          <span class="app-tile-badge" id="badgeSpecs">0</span>
+        </button>
+        <button class="app-tile" data-view="formations">
+          <div class="app-tile-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10L12 4 2 10l10 6 10-6z"/><path d="M6 12v5a2 2 0 002 2h8a2 2 0 002-2v-5"/></svg>
+          </div>
+          <span class="app-tile-label">Formations</span>
+          <span class="app-tile-badge" id="badgeFormations">0</span>
+        </button>
+        <button class="app-tile" data-view="docs">
+          <div class="app-tile-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          </div>
+          <span class="app-tile-label">Documentation</span>
+          <span class="app-tile-badge" id="badgeDocs">0</span>
+        </button>
+        <button class="app-tile admin-only" data-view="admin" id="tileAdmin">
+          <div class="app-tile-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.01a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.01a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </div>
+          <span class="app-tile-label">Administration</span>
+        </button>
+      </div>
+
+      <div class="home-bottom">
+        <div class="panel home-widget">
           <header class="panel-header">
-            <h3>Mes prochaines opérations</h3>
+            <h3>Prochaines opérations</h3>
             <span class="tag">PERSO</span>
           </header>
           <ul class="ops-mini" id="myOpsMini"></ul>
         </div>
-        <div class="panel">
+        <div class="panel home-widget">
           <header class="panel-header">
             <h3>Journal d'activité</h3>
             <span class="tag">LIVE</span>
@@ -367,6 +366,11 @@
         <div class="docs-filter" id="docsFilter"></div>
         <div class="docs-list" id="docsList"></div>
       </div>
+    </section>
+
+    <!-- DOSSIER personnel (Lt et +) -->
+    <section class="view" id="view-dossier">
+      <div id="dossierContent"></div>
     </section>
 
     <!-- ADMIN -->

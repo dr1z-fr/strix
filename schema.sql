@@ -25,6 +25,23 @@ UPDATE users SET grade = 'sergent'      WHERE grade = 'sergent-chef';
 UPDATE users SET grade = 'caporal'      WHERE grade = 'caporal-chef';
 UPDATE users SET grade = 'operateur-2cl' WHERE grade = 'soldat-2cl';
 
+-- Dossier RP (consultable & éditable par Lieutenant et +)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio          TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS joined_at    DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS primary_spec TEXT;
+
+-- Sanctions disciplinaires (Lt et + uniquement)
+CREATE TABLE IF NOT EXISTS sanctions (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT REFERENCES users(id) ON DELETE CASCADE,
+  type       TEXT NOT NULL,
+  reason     TEXT NOT NULL,
+  issued_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+  issued_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS sanctions_user_idx ON sanctions (user_id);
+CREATE INDEX IF NOT EXISTS sanctions_date_idx ON sanctions (issued_at DESC);
+
 CREATE TABLE IF NOT EXISTS ops (
   id            TEXT PRIMARY KEY,
   name          TEXT NOT NULL,

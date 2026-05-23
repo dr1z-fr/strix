@@ -15,6 +15,8 @@ let myGrade = null;
 let isLeader = false;
 let isCmd    = false;
 let canManageCerts = false;
+let canViewDossier = false;
+let currentView = 'home';
 
 // ---- Helpers ----
 const $ = id => document.getElementById(id);
@@ -85,9 +87,10 @@ function setupUserPanel() {
     setTimeout(() => { db.auth.logout(); window.location.href = 'index.html'; }, 100);
   };
   $('logoutBtn').addEventListener('click', doLogout);
-  $('logoutBtnMobile')?.addEventListener('click', doLogout);
 
-  if (!isCmd) $('navAdmin').style.display = 'none';
+  if (!isCmd) {
+    const t = $('tileAdmin'); if (t) t.style.display = 'none';
+  }
   if (!isLeader) $('opFormPanel').style.display = 'none';
   if (!isCmd) $('specFormPanel').style.display = 'none';
 }
@@ -100,9 +103,9 @@ function tickClock() {
 }
 tickClock(); setInterval(tickClock, 1000);
 
-// ---- Navigation ----
+// ---- Navigation (mode tablette : home + apps full-screen) ----
 const VIEWS = {
-  overview:   { title: 'Tableau de bord',  crumb: 'Overview' },
+  home:       { title: 'STRIX',            crumb: 'HOME' },
   ops:        { title: 'Opérations',       crumb: 'Opérations' },
   absences:   { title: 'Absences',         crumb: 'Absences' },
   personnel:  { title: 'Personnel',        crumb: 'Personnel' },
@@ -110,16 +113,24 @@ const VIEWS = {
   formations: { title: 'Formations',       crumb: 'Formations' },
   docs:       { title: 'Documentation',    crumb: 'Documentation' },
   admin:      { title: 'Administration',   crumb: 'Admin' },
+  dossier:    { title: 'Dossier',          crumb: 'Dossier' },
 };
-document.querySelectorAll('.nav-item').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const v = btn.dataset.view;
-    document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b === btn));
-    document.querySelectorAll('.view').forEach(s => s.classList.toggle('active', s.id === `view-${v}`));
-    $('viewTitle').textContent = VIEWS[v].title;
-    $('viewCrumb').textContent = VIEWS[v].crumb;
-  });
+function goToView(v, params) {
+  if (!VIEWS[v]) v = 'home';
+  currentView = v;
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('active', s.id === `view-${v}`));
+  $('viewTitle').textContent = VIEWS[v].title;
+  $('viewCrumb').textContent = VIEWS[v].crumb;
+  const back = $('backToHome');
+  if (back) back.style.display = v === 'home' ? 'none' : 'inline-flex';
+  document.body.dataset.view = v;
+  if (v === 'dossier' && params?.userId) renderDossier(params.userId);
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.app-tile').forEach(btn => {
+  btn.addEventListener('click', () => goToView(btn.dataset.view));
 });
+$('backToHome')?.addEventListener('click', () => goToView('home'));
 
 // =========================================================
 //                       OPERATIONS
@@ -568,8 +579,13 @@ function renderPersonnel() {
         </div>
         <div class="person-rank">${g ? g.label : '—'}</div>
         <div class="person-appellation">${g ? '« ' + g.appel + ' »' : ''}</div>
+        ${canViewDossier ? `<button class="btn-ghost btn-sm dossier-btn" data-open-dossier="${u.id}">Ouvrir dossier</button>` : ''}
       </div>`;
   }).join('');
+
+  grid.querySelectorAll('[data-open-dossier]').forEach(b => {
+    b.addEventListener('click', () => goToView('dossier', { userId: b.dataset.openDossier }));
+  });
 }
 
 // =========================================================
@@ -1201,6 +1217,231 @@ if ($('docForm')) {
   });
 }
 
+// =========================================================
+//                       DOSSIER (Lt et +)
+// =========================================================
+let currentDossierUserId = null;
+
+const SANCTION_TYPES = [
+  { key: 'avertissement', label: 'Avertissement', tone: 'warn' },
+  { key: 'blame',         label: 'Blâme',         tone: 'warn' },
+  { key: 'degradation',   label: 'Dégradation',   tone: 'bad' },
+  { key: 'exclusion',     label: 'Exclusion',     tone: 'bad' },
+];
+
+function renderDossier(userId) {
+  currentDossierUserId = userId;
+  const root = $('dossierContent');
+  if (!root) return;
+
+  if (!canViewDossier) {
+    root.innerHTML = '<div class="panel"><div class="panel-body"><p class="empty-state">Accès réservé aux officiers (Lieutenant et +).</p></div></div>';
+    return;
+  }
+
+  const u = db.users.find(userId);
+  if (!u) {
+    root.innerHTML = '<div class="panel"><div class="panel-body"><p class="empty-state">Opérateur introuvable.</p></div></div>';
+    return;
+  }
+  const g = gradeOf(u);
+  const targetTier = g?.tier ?? 99;
+  const myTier = myGrade?.tier ?? 99;
+  const outranks = targetTier < myTier && u.id !== me.id;
+
+  // Stats agrégées
+  const allOps = db.ops.all();
+  const engaged = allOps.filter(o => o.presences && o.presences[u.id]).length;
+  const validated = allOps.filter(o => o.validated && o.presences && o.presences[u.id]).length;
+  const trainings = db.trainings.all().filter(t => (t.attendees || []).includes(u.id)).length;
+  const absencesAll = db.absences.where(a => a.operator === u.id).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  const absencesCount = absencesAll.length;
+
+  // Spécialisations
+  const specs = db.specializations.all().filter(s =>
+    (s.members || []).includes(u.id) || s.leadId === u.id || s.adjId === u.id
+  );
+
+  // Certifs et formateur
+  const userCertList = userCerts(u.id);
+  const trainerOf = db.certifications.all().filter(c => (c.trainers || []).includes(u.id));
+
+  // Sanctions
+  const sanctionsList = db.sanctions.where(s => s.userId === u.id)
+    .sort((a, b) => (b.issuedAt || 0) - (a.issuedAt || 0));
+
+  const statusBadge = u.status === 'reserve'
+    ? '<span class="status-badge status-reserve">RÉSERVE</span>'
+    : '<span class="status-badge status-active">ACTIF</span>';
+  const roleBadge = u.role === 'cmd' ? '<span class="role-badge cmd">CMD</span>'
+                  : u.role === 'lead' ? '<span class="role-badge lead">OFF</span>'
+                  : '<span class="role-badge">RG</span>';
+
+  const canEdit = !outranks;
+
+  root.innerHTML = `
+    <div class="dossier-head panel">
+      <div class="dossier-head-main">
+        <div class="dossier-avatar">${initials(u.name)}</div>
+        <div class="dossier-ident">
+          <div class="dossier-name">${escapeHTML(u.name)}</div>
+          <div class="dossier-grade">${g ? escapeHTML(g.label) : '—'} ${roleBadge} ${statusBadge}</div>
+          <div class="dossier-id">Matricule <strong>${escapeHTML(u.id)}</strong>${g ? ` · « ${escapeHTML(g.appel)} »` : ''}</div>
+        </div>
+      </div>
+      ${outranks ? '<div class="dossier-locked">Opérateur de rang supérieur — consultation seule.</div>' : ''}
+    </div>
+
+    <div class="dossier-grid">
+      <!-- Stats -->
+      <div class="panel">
+        <header class="panel-header"><h3>Statistiques</h3><span class="tag">CARRIÈRE</span></header>
+        <div class="dossier-stats">
+          <div class="dstat"><span class="dstat-val">${engaged}</span><span class="dstat-lbl">Ops engagées</span></div>
+          <div class="dstat"><span class="dstat-val" style="color:var(--ok)">${validated}</span><span class="dstat-lbl">Ops validées</span></div>
+          <div class="dstat"><span class="dstat-val">${trainings}</span><span class="dstat-lbl">Entraînements</span></div>
+          <div class="dstat"><span class="dstat-val" style="color:${absencesCount > 0 ? 'var(--fg-2)' : 'var(--dim)'}">${absencesCount}</span><span class="dstat-lbl">Absences</span></div>
+        </div>
+        <div class="dossier-affect">
+          ${specs.length ? `<div><span class="dossier-sub">Spécialisations</span><div class="dossier-chips">${specs.map(s => `<span class="trainer-chip">${escapeHTML(s.name)}${s.leadId === u.id ? ' · LEAD' : s.adjId === u.id ? ' · ADJ' : ''}</span>`).join('')}</div></div>` : ''}
+          ${userCertList.length ? `<div><span class="dossier-sub">Certifications</span><div class="dossier-chips">${userCertList.map(({cert}) => `<span class="trainer-chip" style="font-family:var(--mono);font-weight:600;">${escapeHTML(cert.code)}</span>`).join('')}</div></div>` : ''}
+          ${trainerOf.length ? `<div><span class="dossier-sub">Formateur de</span><div class="dossier-chips">${trainerOf.map(c => `<span class="trainer-chip" style="font-family:var(--mono);font-weight:600;color:var(--ok);">${escapeHTML(c.code)}</span>`).join('')}</div></div>` : ''}
+        </div>
+      </div>
+
+      <!-- Identité RP -->
+      <div class="panel">
+        <header class="panel-header"><h3>Identité RP</h3><span class="tag">DOSSIER</span></header>
+        <form class="form-grid dossier-form" id="dossierForm">
+          <label><span>Date d'incorporation</span>
+            <input type="date" id="dossierJoinedAt" value="${u.joinedAt || ''}" ${canEdit ? '' : 'disabled'}/>
+          </label>
+          <label><span>Spécialité principale</span>
+            <input type="text" id="dossierPrimarySpec" value="${escapeHTML(u.primarySpec || '')}" placeholder="Sniper, Médic, Démineur..." ${canEdit ? '' : 'disabled'}/>
+          </label>
+          <label class="full"><span>Biographie / notes</span>
+            <textarea id="dossierBio" rows="5" placeholder="Parcours, antécédents, mentions..." ${canEdit ? '' : 'disabled'}>${escapeHTML(u.bio || '')}</textarea>
+          </label>
+          ${canEdit ? `<div class="full actions">
+            <button type="submit" class="btn-primary">Enregistrer le dossier</button>
+          </div>` : ''}
+        </form>
+      </div>
+    </div>
+
+    <!-- Sanctions -->
+    <div class="panel">
+      <header class="panel-header">
+        <h3>Sanctions disciplinaires</h3>
+        <span class="tag" style="background:${sanctionsList.length ? 'rgba(232,107,107,0.15)' : ''};color:${sanctionsList.length ? 'var(--fg-2)' : 'var(--dim)'};">${sanctionsList.length}</span>
+      </header>
+      <div class="panel-body">
+        ${canEdit ? `<form id="sanctionForm" class="sanction-form">
+          <select id="sanctionType" required>
+            ${SANCTION_TYPES.map(t => `<option value="${t.key}">${t.label}</option>`).join('')}
+          </select>
+          <input type="text" id="sanctionReason" placeholder="Motif détaillé..." required/>
+          <button type="submit" class="btn-danger">Appliquer la sanction</button>
+        </form>` : ''}
+        <ul class="sanction-list">
+          ${sanctionsList.length === 0
+            ? '<li class="empty-state">Aucune sanction au dossier.</li>'
+            : sanctionsList.map(s => {
+                const issuer = userById(s.issuedBy);
+                const typeMeta = SANCTION_TYPES.find(t => t.key === s.type) || { label: s.type, tone: 'warn' };
+                const d = new Date(s.issuedAt);
+                return `<li class="sanction-item tone-${typeMeta.tone}">
+                  <div class="sanction-main">
+                    <div class="sanction-head">
+                      <span class="sanction-type">${escapeHTML(typeMeta.label)}</span>
+                      <span class="sanction-date">${d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })} ${pad(d.getHours())}:${pad(d.getMinutes())}</span>
+                    </div>
+                    <div class="sanction-reason">${escapeHTML(s.reason)}</div>
+                    <div class="sanction-meta">Émise par ${issuer ? `<strong>${escapeHTML(issuer.name)}</strong>` : `<em>${s.issuedBy || '?'}</em>`}</div>
+                  </div>
+                  ${canEdit ? `<button class="btn-ghost btn-sm" data-del-sanction="${s.id}" title="Retirer">×</button>` : ''}
+                </li>`;
+              }).join('')
+          }
+        </ul>
+      </div>
+    </div>
+
+    <!-- Absences historique -->
+    <div class="panel">
+      <header class="panel-header">
+        <h3>Historique des absences</h3>
+        <span class="tag">${absencesCount}</span>
+      </header>
+      <div class="panel-body">
+        ${absencesAll.length === 0
+          ? '<p class="empty-state">Aucune absence enregistrée.</p>'
+          : `<table class="data-table">
+              <thead><tr><th>Période</th><th>Motif</th><th>Commentaire</th><th>Déclarée par</th></tr></thead>
+              <tbody>${absencesAll.map(a => {
+                const dec = userById(a.declaredBy);
+                return `<tr>
+                  <td><strong>${a.from}</strong> → <strong>${a.to}</strong></td>
+                  <td>${escapeHTML(a.reason)}</td>
+                  <td>${escapeHTML(a.comment || '—')}</td>
+                  <td>${dec ? escapeHTML(dec.name) : `<em>${a.declaredBy || '?'}</em>`}</td>
+                </tr>`;
+              }).join('')}</tbody>
+            </table>`
+        }
+      </div>
+    </div>
+  `;
+
+  // Handlers
+  const form = $('dossierForm');
+  if (form && canEdit) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const patch = {
+        bio: $('dossierBio').value.trim(),
+        joinedAt: $('dossierJoinedAt').value || null,
+        primarySpec: $('dossierPrimarySpec').value.trim(),
+      };
+      try {
+        await db.dossier.update(u.id, patch);
+        logAction(`Dossier RP mis à jour — ${u.id}`, 'DOS');
+        toast('Dossier enregistré');
+      } catch {}
+    });
+  }
+  const sForm = $('sanctionForm');
+  if (sForm && canEdit) {
+    sForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const type = $('sanctionType').value;
+      const reason = $('sanctionReason').value.trim();
+      if (!reason) { toast('Motif requis'); return; }
+      const record = { id: db.uid(), userId: u.id, type, reason, issuedBy: me.id, issuedAt: Date.now() };
+      try {
+        await db.sanctions.insert(record);
+        const typeMeta = SANCTION_TYPES.find(t => t.key === type);
+        logAction(`Sanction appliquée — ${u.id} : ${typeMeta?.label || type}`, 'SAN');
+        toast(`${typeMeta?.label || 'Sanction'} appliquée`);
+        $('sanctionReason').value = '';
+      } catch {}
+    });
+  }
+  root.querySelectorAll('[data-del-sanction]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const sId = b.dataset.delSanction;
+      const s = db.sanctions.find(sId);
+      if (!s) return;
+      if (!await confirmDialog('Retirer la sanction', 'Confirmer le retrait de cette sanction ?')) return;
+      try {
+        await db.sanctions.delete(sId);
+        logAction(`Sanction retirée — ${u.id}`, 'SAN');
+        toast('Sanction retirée');
+      } catch {}
+    });
+  });
+}
+
 function renderUserAdmin() {
   const tbody = $('userTable');
   const myTier = myGrade?.tier ?? 99;
@@ -1282,9 +1523,9 @@ function renderUserAdmin() {
 }
 
 // =========================================================
-//                        OVERVIEW
+//                        HOME (springboard)
 // =========================================================
-function renderOverview() {
+function renderHome() {
   const now = Date.now();
   const ops = db.ops.all();
   const users = db.users.all();
@@ -1295,6 +1536,22 @@ function renderOverview() {
   $('statPersonnel').textContent = users.filter(u => u.status === 'actif').length;
   $('statOps').textContent = upcoming.length;
   $('statPresences').textContent = totalPresences;
+
+  // Greeting
+  const hour = new Date().getHours();
+  const greet = hour < 6 ? 'Bonne nuit' : hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+  if ($('homeGreeting')) {
+    $('homeGreeting').textContent = `${greet}, ${myGrade?.label || ''} ${me?.name || ''}.`;
+  }
+
+  // App tile badges
+  const setBadge = (id, n) => { const e = $(id); if (e) e.textContent = n; if (e) e.style.display = n > 0 ? '' : 'none'; };
+  setBadge('badgeOps', upcoming.length);
+  setBadge('badgePersonnel', users.length);
+  setBadge('badgeAbsences', db.absences.all().filter(a => new Date(a.to) >= new Date(Date.now() - 86400000)).length);
+  setBadge('badgeSpecs', db.specializations.all().length);
+  setBadge('badgeFormations', db.formations.all().filter(f => !f.validated).length);
+  setBadge('badgeDocs', db.documents.all().length);
 
   const myOps = upcoming.filter(o => o.presences[me.id]).sort((a, b) => new Date(a.date) - new Date(b.date));
   $('myOpsMini').innerHTML = myOps.length === 0
@@ -1859,7 +2116,8 @@ function renderAll() {
   renderFormations();
   renderDocs();
   if (isCmd) renderUserAdmin();
-  renderOverview();
+  renderHome();
+  if (currentView === 'dossier' && currentDossierUserId) renderDossier(currentDossierUserId);
 }
 
 // Expose toast globally for db.js error reporting.
@@ -1886,8 +2144,9 @@ window.STRIX.toast = toast;
   isLeader = !!me.canManageOps || me.role === 'cmd';
   isCmd    = me.role === 'cmd';
   canManageCerts = (myGrade?.tier || 99) <= 6;
+  canViewDossier = (myGrade?.tier || 99) <= 5;
 
-  $('viewTitle').textContent = 'Tableau de bord';
+  $('viewTitle').textContent = VIEWS[currentView]?.title || 'STRIX';
   setupUserPanel();
   if (isCmd) populateGradeSelect();
 

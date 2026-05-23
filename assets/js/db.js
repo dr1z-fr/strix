@@ -66,6 +66,7 @@
     formation_locked: 'Formation déjà validée — verrouillée',
     invalid_record: 'Données invalides',
     forbidden_notes: 'Notes réservées au gérant d\'op',
+    forbidden_higher_rank: 'Opérateur de rang supérieur — action interdite',
   };
   function humanError(code) { return ERROR_MAP[code] || code; }
 
@@ -104,6 +105,7 @@
     certHolders: [],
     log: [],
     documents: [],
+    sanctions: [],
   };
 
   let renderCallback = null;
@@ -190,6 +192,22 @@
   const certifications = makeCollection('certifications', 'certs');
   const formations     = makeCollection('formations',     'formations');
   const documents      = makeCollection('documents',      'documents');
+  const sanctions      = makeCollection('sanctions',      'sanctions');
+
+  // dossier helper: patch user RP fields (bio, joinedAt, primarySpec)
+  const dossier = {
+    async update(userId, patch) {
+      const i = cache.users.findIndex(u => u.id === userId);
+      const prev = i !== -1 ? { ...cache.users[i] } : null;
+      if (i !== -1) { cache.users[i] = { ...cache.users[i], ...patch }; triggerRender(); }
+      try { await api('dossier.update', { id: userId, patch }); }
+      catch (err) {
+        if (i !== -1 && prev) { cache.users[i] = prev; triggerRender(); }
+        window.STRIX?.toast?.(humanError(err.message));
+        throw err;
+      }
+    },
+  };
 
   // certHolders: read-only on client (mutations are side-effects of formation validation)
   const certHolders = {
@@ -254,6 +272,7 @@
       cache.certHolders     = data.certHolders || [];
       cache.log             = data.log || [];
       cache.documents       = data.documents || [];
+      cache.sanctions       = data.sanctions || [];
       return true;
     } catch (err) {
       return false;
@@ -285,6 +304,7 @@
       cache.certHolders = [];
       cache.log = [];
       cache.documents = [];
+      cache.sanctions = [];
     },
     me() { return cache.me; },
     isAuthenticated() { return !!tokenStore.get(); },
@@ -300,6 +320,8 @@
     formations,
     certHolders,
     documents,
+    sanctions,
+    dossier,
     log,
     auth,
     init,

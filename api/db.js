@@ -134,12 +134,24 @@ const user2cam = u => ({
   id: u.id, name: u.name, grade: u.grade, role: u.role, status: u.status,
   canManageOps: !!u.can_manage_ops,
   mustChangePassword: !!u.must_change_password,
+  bio: u.bio || '',
+  joinedAt: u.joined_at
+    ? (u.joined_at instanceof Date
+        ? u.joined_at.toISOString().slice(0, 10)
+        : String(u.joined_at).slice(0, 10))
+    : null,
+  primarySpec: u.primary_spec || '',
+});
+const sanction2cam = s => ({
+  id: s.id, userId: s.user_id, type: s.type, reason: s.reason,
+  issuedBy: s.issued_by, issuedAt: new Date(s.issued_at).getTime(),
 });
 
 // ---- Permission helpers (server-authoritative) ----
 const isCmd        = me => me.role === 'cmd';
 const canManageOps = me => isCmd(me) || !!me.canManageOps;
 const canManageCerts = me => (GRADE_TIERS[me.grade] || 99) <= 6;
+const canViewDossier = me => (GRADE_TIERS[me.grade] || 99) <= 5; // Lt et +
 
 // ---- Main handler ----
 export default async function handler(req, res) {
@@ -203,8 +215,8 @@ export default async function handler(req, res) {
 
     // ===== INIT (single roundtrip — hot cache for the whole session) =====
     if (action === 'init') {
-      const [users, ops, absences, specs, trainings, certs, formations, holders, log, docs] = await Promise.all([
-        db.query('SELECT id, name, grade, role, status, can_manage_ops, must_change_password FROM users ORDER BY id'),
+      const [users, ops, absences, specs, trainings, certs, formations, holders, log, docs, sanctions] = await Promise.all([
+        db.query('SELECT id, name, grade, role, status, can_manage_ops, must_change_password, bio, joined_at, primary_spec FROM users ORDER BY id'),
         db.query('SELECT * FROM ops ORDER BY date'),
         db.query('SELECT * FROM absences ORDER BY ts DESC'),
         db.query('SELECT * FROM specializations ORDER BY name'),
@@ -214,12 +226,14 @@ export default async function handler(req, res) {
         db.query('SELECT * FROM cert_holders ORDER BY awarded_at DESC'),
         db.query('SELECT * FROM log ORDER BY ts DESC LIMIT 50'),
         db.query('SELECT * FROM documents ORDER BY updated_at DESC'),
+        db.query('SELECT * FROM sanctions ORDER BY issued_at DESC'),
       ]);
       return res.json({
         me: meCam,
         users: users.rows.map(user2cam),
         ops: ops.rows.map(op2cam),
         documents: docs.rows.map(doc2cam),
+        sanctions: sanctions.rows.map(sanction2cam),
         absences: absences.rows.map(abs2cam),
         specializations: specs.rows.map(spec2cam),
         trainings: trainings.rows.map(train2cam),
@@ -783,6 +797,51 @@ export default async function handler(req, res) {
     if (action === 'documents.delete') {
       if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
       await db.query('DELETE FROM documents WHERE id = $1', [body.id]);
+      return res.json({ ok: true });
+    }
+
+    // ===== DOSSIER RP (Lt et +) =====
+    if (action === 'dossier.update') {
+      if (!canViewDossier(meCam)) return res.status(403).json({ error: 'forbidden' });
+      const { id, patch } = body;
+      // Cannot edit dossier of someone outranking me (strictly higher)
+      const { rows: targetRows } = await db.query('SELECT grade FROM users WHERE id = $1', [id]);
+      if (!targetRows[0]) return res.status(404).json({ error: 'not_found' });
+      if (id !== meCam.id && outranksMe(targetRows[0].grade)) {
+        return res.status(403).json({ error: 'forbidden_higher_rank' });
+      }
+      const fields = []; const values = []; let i = 1;
+      if (patch.bio !== undefined)         { fields.push(`bio = $${i++}`);          values.push(patch.bio || null); }
+      if (patch.joinedAt !== undefined)    { fields.push(`joined_at = $${i++}`);    values.push(patch.joinedAt || null); }
+      if (patch.primarySpec !== undefined) { fields.push(`primary_spec = $${i++}`); values.push(patch.primarySpec || null); }
+      if (!fields.length) return res.json({ ok: true });
+      values.push(id);
+      await db.query(`UPDATE users SET ${fields.join(', ')} WHERE id = $${i}`, values);
+      return res.json({ ok: true });
+    }
+
+    // ===== SANCTIONS (Lt et +) =====
+    if (action === 'sanctions.insert') {
+      if (!canViewDossier(meCam)) return res.status(403).json({ error: 'forbidden' });
+      const r = body.record;
+      if (!r?.id || !r?.userId || !r?.type || !r?.reason) {
+        return res.status(400).json({ error: 'invalid_record' });
+      }
+      const { rows: tRows } = await db.query('SELECT grade FROM users WHERE id = $1', [r.userId]);
+      if (!tRows[0]) return res.status(404).json({ error: 'not_found' });
+      if (outranksMe(tRows[0].grade)) {
+        return res.status(403).json({ error: 'forbidden_higher_rank' });
+      }
+      await db.query(
+        `INSERT INTO sanctions (id, user_id, type, reason, issued_by)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [r.id, r.userId, r.type, r.reason, meCam.id]
+      );
+      return res.json({ ok: true });
+    }
+    if (action === 'sanctions.delete') {
+      if (!canViewDossier(meCam)) return res.status(403).json({ error: 'forbidden' });
+      await db.query('DELETE FROM sanctions WHERE id = $1', [body.id]);
       return res.json({ ok: true });
     }
 
