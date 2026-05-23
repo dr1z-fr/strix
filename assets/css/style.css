@@ -1722,6 +1722,31 @@ body.tablet-boot::before {
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
 }
+.medical-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 4px 12px;
+}
+.medical-detail-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.medical-detail-id {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.medical-detail .medical-form {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-2);
+}
 
 /* =================== MOBILE RESPONSIVE =================== */
 @media (max-width: 768px) {
