@@ -19,6 +19,22 @@ let canViewDossier = false;
 let canViewMedical = false;
 let currentView = 'home';
 
+// Médical : Lt+ OU membre/lead/adj d'une spé matchant /m[ée]dic|tccc|santé|infirm/i.
+// La donnée serveur (db.canViewMedical) prime si elle a déjà tranché OUI.
+function computeMedicalAccess() {
+  if (!me) { canViewMedical = false; return; }
+  if (canViewDossier) { canViewMedical = true; return; }
+  // Si la DB a explicitement validé l'accès (logique côté serveur), on respecte.
+  if (window.STRIX?.db && db.medical && typeof db.medical.canView === 'function' && db.medical.canView()) {
+    canViewMedical = true; return;
+  }
+  const re = /m[ée]dic|tccc|sant[ée]|infirm/i;
+  const medSpecs = (db.specializations.all() || []).filter(s => re.test(s.name || '') || re.test(s.description || ''));
+  canViewMedical = medSpecs.some(s =>
+    s.leadId === me.id || s.adjId === me.id || (Array.isArray(s.members) && s.members.includes(me.id))
+  );
+}
+
 // ---- Helpers ----
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
@@ -2351,6 +2367,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // =========================================================
 function renderAll() {
   if (!me) return;
+  // Re-évalue l'accès médical en fonction des dernières spés (les membres peuvent changer).
+  computeMedicalAccess();
+  const tm = $('tileMedical');
+  if (tm) tm.style.display = canViewMedical ? '' : 'none';
   renderOps();
   renderAbsenceOperatorSelect();
   renderAbsences();
@@ -2393,11 +2413,9 @@ window.STRIX.toast = toast;
   isCmd    = me.role === 'cmd';
   canManageCerts = (myGrade?.tier || 99) <= 6;
   canViewDossier = (myGrade?.tier || 99) <= 5;
-  // Médical : Lt+ OU membre/lead/adj d'une spé "médic"/"tccc"
-  const medSpecs = db.specializations.all().filter(s => /m[ée]dic|tccc/i.test(s.name || ''));
-  canViewMedical = canViewDossier || medSpecs.some(s =>
-    s.leadId === me.id || s.adjId === me.id || (s.members || []).includes(me.id)
-  );
+  computeMedicalAccess();
+  console.log('[STRIX] canViewMedical =', canViewMedical,
+    'specs:', db.specializations.all().map(s => ({ id: s.id, name: s.name, leadId: s.leadId, adjId: s.adjId, members: s.members })));
 
   $('viewTitle').textContent = VIEWS[currentView]?.title || 'STRIX';
   setupUserPanel();
