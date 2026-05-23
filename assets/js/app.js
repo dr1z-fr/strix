@@ -124,9 +124,22 @@ function goToView(v, params) {
   currentView = v;
   document.querySelectorAll('.view').forEach(s => s.classList.toggle('active', s.id === `view-${v}`));
   $('viewTitle').textContent = VIEWS[v].title;
-  $('viewCrumb').textContent = VIEWS[v].crumb;
+  const crumb = $('viewCrumb'); if (crumb) crumb.textContent = VIEWS[v].crumb;
+  // Back button : depuis le dossier on revient à Personnel, sinon à l'accueil
   const back = $('backToHome');
-  if (back) back.style.display = v === 'home' ? 'none' : 'inline-flex';
+  if (back) {
+    if (v === 'home') {
+      back.style.display = 'none';
+    } else {
+      back.style.display = 'inline-flex';
+      const target = (v === 'dossier') ? 'personnel' : 'home';
+      const label  = (v === 'dossier') ? 'Personnel' : 'Accueil';
+      back.dataset.target = target;
+      const span = back.querySelector('span'); if (span) span.textContent = label;
+    }
+  }
+  // Lock scroll uniquement sur la home (les autres vues scrollent normalement)
+  document.body.classList.toggle('lock-scroll', v === 'home');
   document.body.dataset.view = v;
   if (v === 'dossier' && params?.userId) renderDossier(params.userId);
   window.scrollTo(0, 0);
@@ -134,7 +147,9 @@ function goToView(v, params) {
 document.querySelectorAll('.app-tile').forEach(btn => {
   btn.addEventListener('click', () => goToView(btn.dataset.view));
 });
-$('backToHome')?.addEventListener('click', () => goToView('home'));
+$('backToHome')?.addEventListener('click', (e) => {
+  goToView(e.currentTarget.dataset.target || 'home');
+});
 
 // =========================================================
 //                       OPERATIONS
@@ -1284,7 +1299,12 @@ function renderDossier(userId) {
   const canEdit = !outranks;
 
   root.innerHTML = `
+    <!-- Header dossier avec bouton retour + identité -->
     <div class="dossier-head panel">
+      <button class="dossier-back" id="dossierBack" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Retour à Personnel
+      </button>
       <div class="dossier-head-main">
         <div class="dossier-avatar">${initials(u.name)}</div>
         <div class="dossier-ident">
@@ -1293,44 +1313,48 @@ function renderDossier(userId) {
           <div class="dossier-id">Matricule <strong>${escapeHTML(u.id)}</strong>${g ? ` · « ${escapeHTML(g.appel)} »` : ''}</div>
         </div>
       </div>
-      ${outranks ? '<div class="dossier-locked">Opérateur de rang supérieur — consultation seule.</div>' : ''}
+      ${outranks ? '<div class="dossier-locked">⚠ Opérateur de rang supérieur — consultation seule, modifications interdites.</div>' : ''}
     </div>
 
-    <div class="dossier-grid">
-      <!-- Stats -->
-      <div class="panel">
-        <header class="panel-header"><h3>Statistiques</h3><span class="tag">CARRIÈRE</span></header>
-        <div class="dossier-stats">
-          <div class="dstat"><span class="dstat-val">${engaged}</span><span class="dstat-lbl">Ops engagées</span></div>
-          <div class="dstat"><span class="dstat-val" style="color:var(--ok)">${validated}</span><span class="dstat-lbl">Ops validées</span></div>
-          <div class="dstat"><span class="dstat-val">${trainings}</span><span class="dstat-lbl">Entraînements</span></div>
-          <div class="dstat"><span class="dstat-val" style="color:${absencesCount > 0 ? 'var(--fg-2)' : 'var(--dim)'}">${absencesCount}</span><span class="dstat-lbl">Absences</span></div>
-        </div>
-        <div class="dossier-affect">
-          ${specs.length ? `<div><span class="dossier-sub">Spécialisations</span><div class="dossier-chips">${specs.map(s => `<span class="trainer-chip">${escapeHTML(s.name)}${s.leadId === u.id ? ' · LEAD' : s.adjId === u.id ? ' · ADJ' : ''}</span>`).join('')}</div></div>` : ''}
-          ${userCertList.length ? `<div><span class="dossier-sub">Certifications</span><div class="dossier-chips">${userCertList.map(({cert}) => `<span class="trainer-chip" style="font-family:var(--mono);font-weight:600;">${escapeHTML(cert.code)}</span>`).join('')}</div></div>` : ''}
-          ${trainerOf.length ? `<div><span class="dossier-sub">Formateur de</span><div class="dossier-chips">${trainerOf.map(c => `<span class="trainer-chip" style="font-family:var(--mono);font-weight:600;color:var(--ok);">${escapeHTML(c.code)}</span>`).join('')}</div></div>` : ''}
-        </div>
+    <!-- Statistiques carrière -->
+    <div class="panel dossier-section">
+      <header class="panel-header"><h3>Statistiques de carrière</h3><span class="tag">CARRIÈRE</span></header>
+      <div class="dossier-stats">
+        <div class="dstat"><span class="dstat-val">${engaged}</span><span class="dstat-lbl">Ops engagées</span></div>
+        <div class="dstat"><span class="dstat-val" style="color:var(--ok)">${validated}</span><span class="dstat-lbl">Ops validées</span></div>
+        <div class="dstat"><span class="dstat-val">${trainings}</span><span class="dstat-lbl">Entraînements</span></div>
+        <div class="dstat"><span class="dstat-val" style="color:${absencesCount > 0 ? 'var(--fg-2)' : 'var(--dim)'}">${absencesCount}</span><span class="dstat-lbl">Absences</span></div>
       </div>
+    </div>
 
-      <!-- Identité RP -->
-      <div class="panel">
-        <header class="panel-header"><h3>Identité RP</h3><span class="tag">DOSSIER</span></header>
-        <form class="form-grid dossier-form" id="dossierForm">
-          <label><span>Date d'incorporation</span>
-            <input type="date" id="dossierJoinedAt" value="${u.joinedAt || ''}" ${canEdit ? '' : 'disabled'}/>
-          </label>
-          <label><span>Spécialité principale</span>
-            <input type="text" id="dossierPrimarySpec" value="${escapeHTML(u.primarySpec || '')}" placeholder="Sniper, Médic, Démineur..." ${canEdit ? '' : 'disabled'}/>
-          </label>
-          <label class="full"><span>Biographie / notes</span>
-            <textarea id="dossierBio" rows="5" placeholder="Parcours, antécédents, mentions..." ${canEdit ? '' : 'disabled'}>${escapeHTML(u.bio || '')}</textarea>
-          </label>
-          ${canEdit ? `<div class="full actions">
-            <button type="submit" class="btn-primary">Enregistrer le dossier</button>
-          </div>` : ''}
-        </form>
+    <!-- Affectations & qualifications -->
+    ${(specs.length || userCertList.length || trainerOf.length) ? `
+    <div class="panel dossier-section">
+      <header class="panel-header"><h3>Affectations &amp; qualifications</h3></header>
+      <div class="dossier-affect">
+        ${specs.length ? `<div class="affect-row"><span class="dossier-sub">Spécialisations</span><div class="dossier-chips">${specs.map(s => `<span class="trainer-chip">${escapeHTML(s.name)}${s.leadId === u.id ? ' · LEAD' : s.adjId === u.id ? ' · ADJ' : ''}</span>`).join('')}</div></div>` : ''}
+        ${userCertList.length ? `<div class="affect-row"><span class="dossier-sub">Certifications</span><div class="dossier-chips">${userCertList.map(({cert}) => `<span class="trainer-chip" style="font-family:var(--mono);font-weight:600;">${escapeHTML(cert.code)}</span>`).join('')}</div></div>` : ''}
+        ${trainerOf.length ? `<div class="affect-row"><span class="dossier-sub">Formateur de</span><div class="dossier-chips">${trainerOf.map(c => `<span class="trainer-chip" style="font-family:var(--mono);font-weight:600;color:var(--ok);">${escapeHTML(c.code)}</span>`).join('')}</div></div>` : ''}
       </div>
+    </div>` : ''}
+
+    <!-- Identité RP -->
+    <div class="panel dossier-section">
+      <header class="panel-header"><h3>Identité RP &amp; biographie</h3><span class="tag">DOSSIER</span></header>
+      <form class="form-grid dossier-form" id="dossierForm">
+        <label><span>Date d'incorporation</span>
+          <input type="date" id="dossierJoinedAt" value="${u.joinedAt || ''}" ${canEdit ? '' : 'disabled'}/>
+        </label>
+        <label><span>Spécialité principale</span>
+          <input type="text" id="dossierPrimarySpec" value="${escapeHTML(u.primarySpec || '')}" placeholder="Sniper, Médic, Démineur..." ${canEdit ? '' : 'disabled'}/>
+        </label>
+        <label class="full"><span>Biographie / notes</span>
+          <textarea id="dossierBio" rows="5" placeholder="Parcours, antécédents, mentions..." ${canEdit ? '' : 'disabled'}>${escapeHTML(u.bio || '')}</textarea>
+        </label>
+        ${canEdit ? `<div class="full actions">
+          <button type="submit" class="btn-primary">Enregistrer le dossier</button>
+        </div>` : ''}
+      </form>
     </div>
 
     <!-- Sanctions -->
@@ -1398,6 +1422,7 @@ function renderDossier(userId) {
   `;
 
   // Handlers
+  $('dossierBack')?.addEventListener('click', () => goToView('personnel'));
   const form = $('dossierForm');
   if (form && canEdit) {
     form.addEventListener('submit', async (e) => {
