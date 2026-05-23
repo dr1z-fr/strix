@@ -146,39 +146,11 @@ const sanction2cam = s => ({
   id: s.id, userId: s.user_id, type: s.type, reason: s.reason,
   issuedBy: s.issued_by, issuedAt: new Date(s.issued_at).getTime(),
 });
-const medical2cam = m => ({
-  userId: m.user_id,
-  bloodType: m.blood_type || '',
-  allergies: m.allergies || '',
-  conditions: m.conditions || '',
-  treatments: m.treatments || '',
-  emergencyContact: m.emergency_contact || '',
-  notes: m.notes || '',
-  fitnessStatus: m.fitness_status || 'apte',
-  lastCheckup: m.last_checkup
-    ? (m.last_checkup instanceof Date
-        ? m.last_checkup.toISOString().slice(0, 10)
-        : String(m.last_checkup).slice(0, 10))
-    : null,
-  updatedAt: m.updated_at ? new Date(m.updated_at).getTime() : null,
-  updatedBy: m.updated_by || null,
-});
-
 // ---- Permission helpers (server-authoritative) ----
 const isCmd        = me => me.role === 'cmd';
 const canManageOps = me => isCmd(me) || !!me.canManageOps;
 const canManageCerts = me => (GRADE_TIERS[me.grade] || 99) <= 6;
 const canViewDossier = me => (GRADE_TIERS[me.grade] || 99) <= 5; // Lt et +
-// Médical : Lt+ OU membre/lead/adj d'une spé "médical" (nom contient médic/medic/tccc)
-const isMedicalSpec = (spec) => /m[ée]dic|tccc/i.test(spec.name || '');
-const canViewMedical = (me, specs) => {
-  if (canViewDossier(me)) return true;
-  const medSpecs = (specs || []).filter(isMedicalSpec);
-  return medSpecs.some(s =>
-    s.lead_id === me.id || s.adj_id === me.id ||
-    (Array.isArray(s.members) ? s.members : []).includes(me.id)
-  );
-};
 
 // ---- Main handler ----
 export default async function handler(req, res) {
@@ -250,7 +222,7 @@ export default async function handler(req, res) {
         }
         throw err;
       });
-      const [users, ops, absences, specs, trainings, certs, formations, holders, log, docs, sanctions, medical] = await Promise.all([
+      const [users, ops, absences, specs, trainings, certs, formations, holders, log, docs, sanctions] = await Promise.all([
         safe('SELECT * FROM users ORDER BY id'),
         safe('SELECT * FROM ops ORDER BY date'),
         safe('SELECT * FROM absences ORDER BY ts DESC'),
@@ -262,10 +234,7 @@ export default async function handler(req, res) {
         safe('SELECT * FROM log ORDER BY ts DESC LIMIT 50'),
         safe('SELECT * FROM documents ORDER BY updated_at DESC'),
         safe('SELECT * FROM sanctions ORDER BY issued_at DESC'),
-        safe('SELECT * FROM medical_records ORDER BY updated_at DESC'),
       ]);
-      // Filtre médical : on n'envoie les casiers que si l'utilisateur peut y accéder.
-      const canMed = canViewMedical(meCam, specs.rows);
       return res.json({
         me: meCam,
         users: users.rows.map(user2cam),
@@ -279,8 +248,6 @@ export default async function handler(req, res) {
         formations: formations.rows.map(formation2cam),
         certHolders: holders.rows.map(holder2cam),
         log: log.rows.map(log2cam),
-        medical: canMed ? medical.rows.map(medical2cam) : [],
-        canViewMedical: canMed,
       });
     }
 
@@ -882,36 +849,6 @@ export default async function handler(req, res) {
     if (action === 'sanctions.delete') {
       if (!canViewDossier(meCam)) return res.status(403).json({ error: 'forbidden' });
       await db.query('DELETE FROM sanctions WHERE id = $1', [body.id]);
-      return res.json({ ok: true });
-    }
-
-    // ===== MEDICAL (Lt+ et spé médicale) =====
-    if (action === 'medical.upsert') {
-      const specsRes = await db.query('SELECT * FROM specializations').catch(() => ({ rows: [] }));
-      if (!canViewMedical(meCam, specsRes.rows)) return res.status(403).json({ error: 'forbidden' });
-      const r = body.record || {};
-      if (!r.userId) return res.status(400).json({ error: 'userId_required' });
-      await db.query(
-        `INSERT INTO medical_records
-           (user_id, blood_type, allergies, conditions, treatments,
-            emergency_contact, notes, fitness_status, last_checkup,
-            updated_at, updated_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW(), $10)
-         ON CONFLICT (user_id) DO UPDATE SET
-           blood_type = EXCLUDED.blood_type,
-           allergies = EXCLUDED.allergies,
-           conditions = EXCLUDED.conditions,
-           treatments = EXCLUDED.treatments,
-           emergency_contact = EXCLUDED.emergency_contact,
-           notes = EXCLUDED.notes,
-           fitness_status = EXCLUDED.fitness_status,
-           last_checkup = EXCLUDED.last_checkup,
-           updated_at = NOW(),
-           updated_by = EXCLUDED.updated_by`,
-        [r.userId, r.bloodType || null, r.allergies || null, r.conditions || null,
-         r.treatments || null, r.emergencyContact || null, r.notes || null,
-         r.fitnessStatus || 'apte', r.lastCheckup || null, meCam.id]
-      );
       return res.json({ ok: true });
     }
 

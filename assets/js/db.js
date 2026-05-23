@@ -106,8 +106,6 @@
     log: [],
     documents: [],
     sanctions: [],
-    medical: [],
-    canViewMedical: false,
   };
 
   let renderCallback = null;
@@ -196,28 +194,6 @@
   const documents      = makeCollection('documents',      'documents');
   const sanctions      = makeCollection('sanctions',      'sanctions');
 
-  // medical helper : casier médical (upsert + read par userId)
-  const medical = {
-    all: () => cache.medical.slice(),
-    forUser: (userId) => cache.medical.find(m => m.userId === userId) || null,
-    canView: () => !!cache.canViewMedical,
-    async upsert(record) {
-      const i = cache.medical.findIndex(m => m.userId === record.userId);
-      const prev = i !== -1 ? { ...cache.medical[i] } : null;
-      const next = { ...prev, ...record, updatedAt: Date.now() };
-      if (i !== -1) cache.medical[i] = next; else cache.medical.unshift(next);
-      triggerRender();
-      try { await api('medical.upsert', { record }); }
-      catch (err) {
-        if (i !== -1 && prev) cache.medical[i] = prev;
-        else { const j = cache.medical.findIndex(m => m.userId === record.userId); if (j !== -1) cache.medical.splice(j, 1); }
-        triggerRender();
-        window.STRIX?.toast?.(humanError(err.message));
-        throw err;
-      }
-    },
-  };
-
   // dossier helper: patch user RP fields (bio, joinedAt, primarySpec)
   const dossier = {
     async update(userId, patch) {
@@ -297,8 +273,6 @@
       cache.log             = data.log || [];
       cache.documents       = data.documents || [];
       cache.sanctions       = data.sanctions || [];
-      cache.medical         = data.medical || [];
-      cache.canViewMedical  = !!data.canViewMedical;
       return true;
     } catch (err) {
       return false;
@@ -331,8 +305,6 @@
       cache.log = [];
       cache.documents = [];
       cache.sanctions = [];
-      cache.medical = [];
-      cache.canViewMedical = false;
     },
     me() { return cache.me; },
     isAuthenticated() { return !!tokenStore.get(); },
@@ -349,7 +321,6 @@
     certHolders,
     documents,
     sanctions,
-    medical,
     dossier,
     log,
     auth,
