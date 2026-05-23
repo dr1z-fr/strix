@@ -212,6 +212,15 @@ export default async function handler(req, res) {
     if (!me || me.status === 'reserve') return res.status(401).json({ error: 'session_invalid' });
     const meCam = user2cam(me);
 
+    // ===== Mandatory password change gate =====
+    // Si l'utilisateur doit changer son mot de passe, on n'autorise que :
+    //   - 'init'                : pour pouvoir charger l'UI
+    //   - 'auth.changePassword' : pour changer effectivement le mdp
+    // Toute autre action est refusée tant que le flag n'est pas levé.
+    if (me.must_change_password && action !== 'init' && action !== 'auth.changePassword') {
+      return res.status(403).json({ error: 'must_change_password' });
+    }
+
     // ===== INIT (single roundtrip — hot cache for the whole session) =====
     if (action === 'init') {
       // Helper : retourne { rows: [] } si la table n'existe pas encore (avant migration).
@@ -544,17 +553,39 @@ export default async function handler(req, res) {
       return res.json({ ok: true });
     }
     if (action === 'trainings.update') {
-      const spec = await getSpecForTraining(body.id);
-      const r = body.patch;
-      const isSelfAttendanceOnly = r && Object.keys(r).length === 1 && r.attendees !== undefined;
+      const { rows: trRows } = await db.query('SELECT * FROM trainings WHERE id = $1', [body.id]);
+      const tr = trRows[0];
+      if (!tr) return res.status(404).json({ error: 'not_found' });
+      const spec = await getSpec(tr.spec_id);
+      const r = body.patch || {};
       const isSpecMember = spec && (
         (spec.members || []).includes(meCam.id) ||
         spec.lead_id === meCam.id ||
         spec.adj_id === meCam.id
       );
-      if (!isSpecManagerOf(spec) && !(isSelfAttendanceOnly && isSpecMember)) {
+      const isMgr = isSpecManagerOf(spec);
+
+      if (r.attendees !== undefined) {
+        const prev = Array.isArray(tr.attendees) ? tr.attendees : [];
+        const next = Array.isArray(r.attendees)  ? r.attendees  : [];
+        const prevSet = new Set(prev);
+        const nextSet = new Set(next);
+        const changed = [];
+        for (const x of prevSet) if (!nextSet.has(x)) changed.push(x);
+        for (const x of nextSet) if (!prevSet.has(x)) changed.push(x);
+        const onlySelf = changed.length === 1 && changed[0] === meCam.id;
+        // Self-toggle uniquement si l'appelant est membre/lead/adj de la spé.
+        // Sinon il faut être manager.
+        if (!isMgr && !(onlySelf && isSpecMember)) {
+          return res.status(403).json({ error: 'forbidden_roster' });
+        }
+      }
+      // Tout autre champ → manager only (titre/date/description… si jamais ajouté plus tard).
+      const otherKeys = Object.keys(r).filter(k => k !== 'attendees');
+      if (otherKeys.length && !isMgr) {
         return res.status(403).json({ error: 'forbidden' });
       }
+
       const fields = []; const values = []; let i = 1;
       if (r.attendees !== undefined) { fields.push(`attendees = $${i++}::jsonb`); values.push(JSON.stringify(r.attendees)); }
       values.push(body.id);
@@ -761,7 +792,20 @@ export default async function handler(req, res) {
 
     // ===== LOG (rate-limited write, single-statement trim) =====
     if (action === 'log.insert') {
-      const r = body.record;
+      const r = body.record || {};
+      // Validation : le log reflète des actions métier, on ne tolère pas de payload arbitraire.
+      const ALLOWED_PILLS = new Set([
+        'INFO','AUTH','ADM',
+        'OPS','PRES','ROST','VAL',
+        'ABS',
+        'SPEC','TRAIN',
+        'CERT','FORM',
+        'DOC',
+        'DOS','SAN'
+      ]);
+      const pill = ALLOWED_PILLS.has(String(r.pill || '').toUpperCase()) ? String(r.pill).toUpperCase() : 'INFO';
+      const text = String(r.text || '').slice(0, 280); // tronqué à 280 chars max
+      if (!text) return res.status(400).json({ error: 'empty_text' });
       // Single-statement INSERT + trim using a CTE → 1 round-trip instead of 2.
       await db.query(
         `WITH ins AS (
@@ -771,7 +815,7 @@ export default async function handler(req, res) {
          )
          DELETE FROM log
          WHERE id NOT IN (SELECT id FROM log ORDER BY ts DESC LIMIT 50)`,
-        [r.ts || Date.now(), r.text || '', r.pill || 'INFO', meCam.id]
+        [r.ts || Date.now(), text, pill, meCam.id]
       );
       return res.json({ ok: true });
     }
@@ -848,6 +892,16 @@ export default async function handler(req, res) {
     }
     if (action === 'sanctions.delete') {
       if (!canViewDossier(meCam)) return res.status(403).json({ error: 'forbidden' });
+      // Refuser la suppression d'une sanction visant un supérieur hiérarchique.
+      const { rows: sRows } = await db.query(
+        `SELECT s.user_id, u.grade FROM sanctions s
+           LEFT JOIN users u ON u.id = s.user_id
+          WHERE s.id = $1`, [body.id]
+      );
+      if (!sRows[0]) return res.status(404).json({ error: 'not_found' });
+      if (sRows[0].grade && outranksMe(sRows[0].grade)) {
+        return res.status(403).json({ error: 'forbidden_higher_rank' });
+      }
       await db.query('DELETE FROM sanctions WHERE id = $1', [body.id]);
       return res.json({ ok: true });
     }
