@@ -101,6 +101,12 @@
           <span class="app-tile-label">Documentation</span>
           <span class="app-tile-badge" id="badgeDocs">0</span>
         </button>
+        <button class="app-tile" data-view="logs" id="tileLogs">
+          <div class="app-tile-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h12"/><circle cx="20" cy="18" r="2"/></svg>
+          </div>
+          <span class="app-tile-label">Logs</span>
+        </button>
         <button class="app-tile admin-only" data-view="admin" id="tileAdmin">
           <div class="app-tile-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h.01a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.01a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -108,27 +114,18 @@
           <span class="app-tile-label">Administration</span>
         </button>
       </div>
-
-      <div class="home-bottom">
-        <div class="panel home-widget">
-          <header class="panel-header">
-            <h3>Prochaines opérations</h3>
-            <span class="tag">PERSO</span>
-          </header>
-          <ul class="ops-mini" id="myOpsMini"></ul>
-        </div>
-        <div class="panel home-widget">
-          <header class="panel-header">
-            <h3>Journal d'activité</h3>
-            <span class="tag">LIVE</span>
-          </header>
-          <ul class="activity-list" id="activityList"></ul>
-        </div>
-      </div>
     </section>
 
     <!-- OPS -->
     <section class="view" id="view-ops">
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Mes prochaines opérations</h3>
+          <span class="tag">PERSO</span>
+        </header>
+        <ul class="ops-mini" id="myOpsMini"></ul>
+      </div>
+
       <div class="panel" id="opFormPanel">
         <header class="panel-header">
           <h3>Planifier une opération</h3>
@@ -363,6 +360,17 @@
         </header>
         <div class="docs-filter" id="docsFilter"></div>
         <div class="docs-list" id="docsList"></div>
+      </div>
+    </section>
+
+    <!-- LOGS — journal d'activité (Lt et +) -->
+    <section class="view" id="view-logs">
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Journal d'activité</h3>
+          <span class="tag">LIVE</span>
+        </header>
+        <ul class="activity-list" id="activityList"></ul>
       </div>
     </section>
 

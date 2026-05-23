@@ -91,6 +91,9 @@ function setupUserPanel() {
   if (!isCmd) {
     const t = $('tileAdmin'); if (t) t.style.display = 'none';
   }
+  if (!canViewDossier) {
+    const tl = $('tileLogs'); if (tl) tl.style.display = 'none';
+  }
   if (!isLeader) $('opFormPanel').style.display = 'none';
   if (!isCmd) $('specFormPanel').style.display = 'none';
 }
@@ -112,6 +115,7 @@ const VIEWS = {
   specs:      { title: 'Spécialisations',  crumb: 'Spécialisations' },
   formations: { title: 'Formations',       crumb: 'Formations' },
   docs:       { title: 'Documentation',    crumb: 'Documentation' },
+  logs:       { title: 'Journal d\'activité', crumb: 'Logs' },
   admin:      { title: 'Administration',   crumb: 'Admin' },
   dossier:    { title: 'Dossier',          crumb: 'Dossier' },
 };
