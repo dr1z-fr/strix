@@ -65,6 +65,7 @@
     forbidden_not_trainer: 'Réservé aux formateurs de cette certification',
     formation_locked: 'Formation déjà validée — verrouillée',
     invalid_record: 'Données invalides',
+    forbidden_notes: 'Notes réservées au gérant d\'op',
   };
   function humanError(code) { return ERROR_MAP[code] || code; }
 
@@ -102,6 +103,7 @@
     formations: [],
     certHolders: [],
     log: [],
+    documents: [],
   };
 
   let renderCallback = null;
@@ -187,6 +189,7 @@
   const trainings = makeCollection('trainings',       'trainings');
   const certifications = makeCollection('certifications', 'certs');
   const formations     = makeCollection('formations',     'formations');
+  const documents      = makeCollection('documents',      'documents');
 
   // certHolders: read-only on client (mutations are side-effects of formation validation)
   const certHolders = {
@@ -250,6 +253,7 @@
       cache.formations      = data.formations || [];
       cache.certHolders     = data.certHolders || [];
       cache.log             = data.log || [];
+      cache.documents       = data.documents || [];
       return true;
     } catch (err) {
       return false;
@@ -280,6 +284,7 @@
       cache.formations = [];
       cache.certHolders = [];
       cache.log = [];
+      cache.documents = [];
     },
     me() { return cache.me; },
     isAuthenticated() { return !!tokenStore.get(); },
@@ -294,6 +299,7 @@
     certifications,
     formations,
     certHolders,
+    documents,
     log,
     auth,
     init,

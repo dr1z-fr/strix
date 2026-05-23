@@ -83,6 +83,13 @@ const op2cam = o => ({
   priority: o.priority, brief: o.brief, createdBy: o.created_by,
   presences: o.presences || {},
   validated: o.validated, validatedBy: o.validated_by,
+  notes: o.notes || '',
+});
+const doc2cam = d => ({
+  id: d.id, title: d.title, category: d.category || '',
+  content: d.content, createdBy: d.created_by,
+  createdAt: new Date(d.created_at).getTime(),
+  updatedAt: new Date(d.updated_at).getTime(),
 });
 const abs2cam = a => ({
   id: a.id, operator: a.operator,
@@ -196,7 +203,7 @@ export default async function handler(req, res) {
 
     // ===== INIT (single roundtrip — hot cache for the whole session) =====
     if (action === 'init') {
-      const [users, ops, absences, specs, trainings, certs, formations, holders, log] = await Promise.all([
+      const [users, ops, absences, specs, trainings, certs, formations, holders, log, docs] = await Promise.all([
         db.query('SELECT id, name, grade, role, status, can_manage_ops, must_change_password FROM users ORDER BY id'),
         db.query('SELECT * FROM ops ORDER BY date'),
         db.query('SELECT * FROM absences ORDER BY ts DESC'),
@@ -206,11 +213,13 @@ export default async function handler(req, res) {
         db.query('SELECT * FROM formations ORDER BY date DESC'),
         db.query('SELECT * FROM cert_holders ORDER BY awarded_at DESC'),
         db.query('SELECT * FROM log ORDER BY ts DESC LIMIT 50'),
+        db.query('SELECT * FROM documents ORDER BY updated_at DESC'),
       ]);
       return res.json({
         me: meCam,
         users: users.rows.map(user2cam),
         ops: ops.rows.map(op2cam),
+        documents: docs.rows.map(doc2cam),
         absences: absences.rows.map(abs2cam),
         specializations: specs.rows.map(spec2cam),
         trainings: trainings.rows.map(train2cam),
@@ -335,10 +344,10 @@ export default async function handler(req, res) {
       if (!canManageOps(meCam)) return res.status(403).json({ error: 'forbidden' });
       const r = body.record;
       await db.query(
-        `INSERT INTO ops (id, name, date, zone, priority, brief, created_by, presences, validated, validated_by)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        `INSERT INTO ops (id, name, date, zone, priority, brief, created_by, presences, validated, validated_by, notes)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [r.id, r.name, r.date, r.zone, r.priority, r.brief, meCam.id,
-         JSON.stringify(r.presences || {}), false, null]
+         JSON.stringify(r.presences || {}), false, null, r.notes || null]
       );
       await notifyOpCreated(r, meCam.name);
       return res.json({ ok: true });
@@ -379,6 +388,12 @@ export default async function handler(req, res) {
           return res.status(403).json({ error: 'forbidden_roster' });
         }
         fields.push(`presences = $${i++}::jsonb`); values.push(JSON.stringify(next));
+      }
+
+      // 3. Notes du gérant d'op — réservé aux managers.
+      if (patch.notes !== undefined) {
+        if (!canManageOps(meCam)) return res.status(403).json({ error: 'forbidden_notes' });
+        fields.push(`notes = $${i++}`); values.push(patch.notes || null);
       }
 
       values.push(id);
@@ -737,6 +752,37 @@ export default async function handler(req, res) {
          WHERE id NOT IN (SELECT id FROM log ORDER BY ts DESC LIMIT 50)`,
         [r.ts || Date.now(), r.text || '', r.pill || 'INFO', meCam.id]
       );
+      return res.json({ ok: true });
+    }
+
+    // ===== DOCUMENTS (lecture libre, écriture CMD uniquement) =====
+    if (action === 'documents.insert') {
+      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      const r = body.record;
+      if (!r?.id || !r?.title || !r?.content) return res.status(400).json({ error: 'invalid_record' });
+      await db.query(
+        `INSERT INTO documents (id, title, category, content, created_by)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [r.id, r.title, r.category || null, r.content, meCam.id]
+      );
+      return res.json({ ok: true });
+    }
+    if (action === 'documents.update') {
+      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      const { id, patch } = body;
+      const fields = []; const values = []; let i = 1;
+      for (const k of ['title', 'category', 'content']) {
+        if (patch[k] !== undefined) { fields.push(`${k} = $${i++}`); values.push(patch[k] || null); }
+      }
+      if (!fields.length) return res.json({ ok: true });
+      fields.push(`updated_at = NOW()`);
+      values.push(id);
+      await db.query(`UPDATE documents SET ${fields.join(', ')} WHERE id = $${i}`, values);
+      return res.json({ ok: true });
+    }
+    if (action === 'documents.delete') {
+      if (!isCmd(meCam)) return res.status(403).json({ error: 'forbidden' });
+      await db.query('DELETE FROM documents WHERE id = $1', [body.id]);
       return res.json({ ok: true });
     }
 

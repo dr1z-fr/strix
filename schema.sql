@@ -39,6 +39,8 @@ CREATE TABLE IF NOT EXISTS ops (
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS ops_date_idx ON ops (date);
+-- Notes laissées par le gérant d'op (debrief, retours terrain...)
+ALTER TABLE ops ADD COLUMN IF NOT EXISTS notes TEXT;
 
 CREATE TABLE IF NOT EXISTS absences (
   id           TEXT PRIMARY KEY,
@@ -122,6 +124,21 @@ CREATE TABLE IF NOT EXISTS log (
   who   TEXT
 );
 CREATE INDEX IF NOT EXISTS log_ts_idx ON log (ts DESC);
+
+-- =========================================================
+-- DOCUMENTATION (fiches consultables par tous, créées par CMD)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS documents (
+  id          TEXT PRIMARY KEY,
+  title       TEXT NOT NULL,
+  category    TEXT,
+  content     TEXT NOT NULL,
+  created_by  TEXT REFERENCES users(id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS documents_cat_idx ON documents (category);
+CREATE INDEX IF NOT EXISTS documents_updated_idx ON documents (updated_at DESC);
 
 -- L'utilisateur initial "Drui" (Colonel) sera créé automatiquement par
 -- l'API au premier login si la table users est vide.

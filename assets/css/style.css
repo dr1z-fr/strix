@@ -933,6 +933,114 @@ optgroup {
 }
 optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); letter-spacing: 0; }
 
+/* =================== OP NOTES (gérant) =================== */
+.op-notes {
+  margin: 12px 0;
+  padding: 12px 14px;
+  background: rgba(123, 224, 164, 0.04);
+  border: 1px dashed rgba(123, 224, 164, 0.25);
+  border-radius: var(--radius-sm);
+}
+.op-notes.has-note {
+  background: rgba(123, 224, 164, 0.06);
+  border-style: solid;
+  border-color: rgba(123, 224, 164, 0.35);
+}
+.op-notes-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-bottom: 8px;
+}
+.op-notes-head strong {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--ok);
+}
+.op-notes-body {
+  font-size: 13px; line-height: 1.55; color: var(--fg);
+  white-space: normal;
+}
+.op-notes-edit textarea {
+  width: 100%; min-height: 90px; resize: vertical;
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--fg); font-family: var(--sans); font-size: 13px;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+}
+.op-notes-edit textarea:focus {
+  outline: none; border-color: var(--ok);
+  box-shadow: 0 0 0 3px rgba(123, 224, 164, 0.15);
+}
+.op-notes-actions {
+  display: flex; gap: 8px; margin-top: 8px; align-items: center;
+}
+
+/* =================== DOCUMENTATION =================== */
+.docs-filter {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 12px 18px 4px;
+}
+.doc-chip {
+  background: var(--bg); border: 1px solid var(--border);
+  color: var(--dim); font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 6px 10px; border-radius: 999px; cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.doc-chip:hover { color: var(--fg); border-color: var(--ok); }
+.doc-chip.is-active {
+  background: rgba(123, 224, 164, 0.1);
+  border-color: var(--ok); color: var(--ok);
+}
+.doc-chip-count {
+  background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 999px;
+  font-size: 9.5px; letter-spacing: 0;
+}
+.docs-list {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 12px 18px 18px;
+}
+.doc-card {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); overflow: hidden;
+  transition: border-color 0.15s;
+}
+.doc-card:hover { border-color: rgba(255,255,255,0.18); }
+.doc-card-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; padding: 14px 16px;
+}
+.doc-card-title {
+  margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--fg);
+}
+.doc-card-meta {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  font-size: 11px; color: var(--dim);
+}
+.doc-cat-pill {
+  background: rgba(123,224,164,0.08); color: var(--ok);
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px;
+}
+.doc-card-actions {
+  display: flex; gap: 6px; flex-shrink: 0;
+}
+.doc-card-body {
+  padding: 0 16px 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px; font-size: 13px; line-height: 1.6; color: var(--fg);
+}
+.doc-card-body h3 {
+  font-size: 14px; margin: 12px 0 6px; color: var(--ok);
+  font-family: var(--mono); letter-spacing: 0.05em; text-transform: uppercase;
+}
+.doc-card-body h4 {
+  font-size: 13px; margin: 10px 0 4px; color: var(--fg);
+}
+.doc-card-body p { margin: 0 0 6px; }
+.doc-card-body ul { margin: 4px 0 8px; padding-left: 20px; }
+.doc-card-body li { margin: 2px 0; }
+.doc-card-body strong { color: var(--fg); font-weight: 600; }
+
 .mobile-only { display: none; }
 
 /* =================== MOBILE RESPONSIVE =================== */
@@ -1031,6 +1139,11 @@ optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); l
   /* Op cards */
   .op-card-head { flex-wrap: wrap; gap: 8px; }
   .op-actions { flex-wrap: wrap; }
+
+  /* Documentation */
+  .doc-card-head { flex-direction: column; align-items: stretch; }
+  .doc-card-actions { flex-wrap: wrap; }
+  .docs-filter, .docs-list { padding-left: 12px; padding-right: 12px; }
 
   /* Modals */
   .modal-box { width: calc(100vw - 20px); max-height: 85vh; overflow-y: auto; }

@@ -102,12 +102,14 @@ tickClock(); setInterval(tickClock, 1000);
 
 // ---- Navigation ----
 const VIEWS = {
-  overview:  { title: 'Tableau de bord',  crumb: 'Overview' },
-  ops:       { title: 'Opérations',       crumb: 'Opérations' },
-  absences:  { title: 'Absences',         crumb: 'Absences' },
-  personnel: { title: 'Personnel',        crumb: 'Personnel' },
-  specs:     { title: 'Spécialisations',  crumb: 'Spécialisations' },
-  admin:     { title: 'Administration',   crumb: 'Admin' },
+  overview:   { title: 'Tableau de bord',  crumb: 'Overview' },
+  ops:        { title: 'Opérations',       crumb: 'Opérations' },
+  absences:   { title: 'Absences',         crumb: 'Absences' },
+  personnel:  { title: 'Personnel',        crumb: 'Personnel' },
+  specs:      { title: 'Spécialisations',  crumb: 'Spécialisations' },
+  formations: { title: 'Formations',       crumb: 'Formations' },
+  docs:       { title: 'Documentation',    crumb: 'Documentation' },
+  admin:      { title: 'Administration',   crumb: 'Admin' },
 };
 document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -246,6 +248,25 @@ function renderOps() {
       </header>
       ${op.brief ? `<div class="op-brief"><span>${op.brief}</span></div>` : ''}
       ${banner}
+      ${(() => {
+        const hasNote = !!(op.notes && op.notes.trim());
+        if (!isLeader && !hasNote) return '';
+        return `<div class="op-notes ${hasNote ? 'has-note' : ''}">
+          <div class="op-notes-head">
+            <strong>Note du gérant d'op</strong>
+            ${isLeader ? `<button class="btn-ghost btn-sm" data-edit-note="${op.id}">${hasNote ? 'Modifier' : '+ Ajouter une note'}</button>` : ''}
+          </div>
+          ${hasNote ? `<div class="op-notes-body" data-note-body="${op.id}">${(op.notes || '').replace(/</g, '&lt;').replace(/\n/g, '<br>')}</div>` : ''}
+          <div class="op-notes-edit" id="op-notes-edit-${op.id}" style="display:none;">
+            <textarea data-note-textarea="${op.id}" rows="4" placeholder="Debrief, retours terrain, points d'attention...">${(op.notes || '').replace(/</g, '&lt;')}</textarea>
+            <div class="op-notes-actions">
+              <button class="btn-primary btn-sm" data-save-note="${op.id}">Enregistrer</button>
+              <button class="btn-ghost btn-sm" data-cancel-note="${op.id}">Annuler</button>
+              ${hasNote ? `<button class="btn-danger btn-sm" data-clear-note="${op.id}" style="margin-left:auto;">Effacer</button>` : ''}
+            </div>
+          </div>
+        </div>`;
+      })()}
       <div class="op-presence">
         <div class="presence-block">
           <h4>Ma présence <span class="count">${myChecked ? '✓' : ''}</span></h4>
@@ -321,6 +342,54 @@ function renderOps() {
       db.ops.delete(op.id);
       logAction(`Opération supprimée — ${op.name}`, 'OPS');
       toast('Opération supprimée');
+      renderAll();
+    });
+  });
+
+  // ===== Notes du gérant d'op =====
+  list.querySelectorAll('[data-edit-note]').forEach(b => {
+    b.addEventListener('click', () => {
+      if (!isLeader) return;
+      const opId = b.dataset.editNote;
+      const editor = $(`op-notes-edit-${opId}`);
+      const body = list.querySelector(`[data-note-body="${opId}"]`);
+      if (editor) editor.style.display = '';
+      if (body) body.style.display = 'none';
+    });
+  });
+  list.querySelectorAll('[data-cancel-note]').forEach(b => {
+    b.addEventListener('click', () => {
+      const opId = b.dataset.cancelNote;
+      const editor = $(`op-notes-edit-${opId}`);
+      const body = list.querySelector(`[data-note-body="${opId}"]`);
+      if (editor) editor.style.display = 'none';
+      if (body) body.style.display = '';
+    });
+  });
+  list.querySelectorAll('[data-save-note]').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!isLeader) return;
+      const opId = b.dataset.saveNote;
+      const op = db.ops.find(opId);
+      if (!op) return;
+      const ta = list.querySelector(`[data-note-textarea="${opId}"]`);
+      const value = (ta?.value || '').trim();
+      await db.ops.update(opId, { notes: value });
+      logAction(`Note d'op ${value ? 'mise à jour' : 'effacée'} — ${op.name}`, 'OPS');
+      toast(value ? 'Note enregistrée' : 'Note effacée');
+      renderAll();
+    });
+  });
+  list.querySelectorAll('[data-clear-note]').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!isLeader) return;
+      const opId = b.dataset.clearNote;
+      const op = db.ops.find(opId);
+      if (!op) return;
+      if (!await confirmDialog('Effacer la note', `Supprimer la note de l'opération <strong>${op.name}</strong> ?`)) return;
+      await db.ops.update(opId, { notes: '' });
+      logAction(`Note d'op effacée — ${op.name}`, 'OPS');
+      toast('Note effacée');
       renderAll();
     });
   });
@@ -947,6 +1016,190 @@ userForm?.addEventListener('submit', (e) => {
   resetUserForm();
   renderAll();
 });
+
+// =========================================================
+//                       DOCUMENTATION
+// =========================================================
+let docsFilterCategory = ''; // '' = toutes
+
+function escapeHTML(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Rendu très léger : titres (# ##), gras (**x**), italique (*x*), listes (- x)
+function renderDocContent(raw) {
+  const safe = escapeHTML(raw);
+  const lines = safe.split(/\n/);
+  let html = '';
+  let inList = false;
+  for (let line of lines) {
+    if (/^\s*-\s+/.test(line)) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += `<li>${line.replace(/^\s*-\s+/, '')}</li>`;
+      continue;
+    }
+    if (inList) { html += '</ul>'; inList = false; }
+    if (/^##\s+/.test(line))       html += `<h4>${line.replace(/^##\s+/, '')}</h4>`;
+    else if (/^#\s+/.test(line))   html += `<h3>${line.replace(/^#\s+/, '')}</h3>`;
+    else if (line.trim() === '')   html += '<br>';
+    else                            html += `<p>${line}</p>`;
+  }
+  if (inList) html += '</ul>';
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  return html;
+}
+
+function renderDocs() {
+  const list = $('docsList');
+  const filter = $('docsFilter');
+  const countTag = $('docsCount');
+  const newBtn = $('newDocBtn');
+  if (!list) return;
+
+  const docs = db.documents.all().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  if (countTag) countTag.textContent = docs.length;
+  if (newBtn) newBtn.style.display = isCmd ? 'inline-flex' : 'none';
+
+  // Datalist (catégories existantes)
+  const dl = $('docCategoryList');
+  if (dl) {
+    const cats = [...new Set(docs.map(d => d.category).filter(Boolean))].sort();
+    dl.innerHTML = cats.map(c => `<option value="${escapeHTML(c)}"></option>`).join('');
+  }
+
+  // Filtre catégorie
+  const categories = [...new Set(docs.map(d => d.category).filter(Boolean))].sort();
+  if (filter) {
+    filter.innerHTML = `
+      <button class="doc-chip ${docsFilterCategory === '' ? 'is-active' : ''}" data-cat="">Toutes <span class="doc-chip-count">${docs.length}</span></button>
+      ${categories.map(c => {
+        const n = docs.filter(d => d.category === c).length;
+        return `<button class="doc-chip ${docsFilterCategory === c ? 'is-active' : ''}" data-cat="${escapeHTML(c)}">${escapeHTML(c)} <span class="doc-chip-count">${n}</span></button>`;
+      }).join('')}
+    `;
+    filter.querySelectorAll('[data-cat]').forEach(b => {
+      b.addEventListener('click', () => {
+        docsFilterCategory = b.dataset.cat;
+        renderDocs();
+      });
+    });
+  }
+
+  const filtered = docsFilterCategory
+    ? docs.filter(d => d.category === docsFilterCategory)
+    : docs;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty-state" style="padding:32px;text-align:center;">
+      <div style="font-size:13px;color:var(--dim);">Aucune fiche disponible${docsFilterCategory ? ` dans « ${escapeHTML(docsFilterCategory)} »` : ''}.</div>
+      ${isCmd ? '<div style="font-size:11.5px;color:var(--dim-2);margin-top:4px;">Cliquez sur <strong>+ Nouvelle fiche</strong> pour en créer une.</div>' : ''}
+    </div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(d => {
+    const author = userById(d.createdBy);
+    const updated = new Date(d.updatedAt || d.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+    return `<article class="doc-card" data-doc="${d.id}">
+      <header class="doc-card-head">
+        <div>
+          <h4 class="doc-card-title">${escapeHTML(d.title)}</h4>
+          <div class="doc-card-meta">
+            ${d.category ? `<span class="doc-cat-pill">${escapeHTML(d.category)}</span>` : ''}
+            <span>Mise à jour ${updated}</span>
+            ${author ? `<span>· ${escapeHTML(author.name)}</span>` : ''}
+          </div>
+        </div>
+        <div class="doc-card-actions">
+          <button class="btn-ghost btn-sm" data-toggle-doc="${d.id}">Lire</button>
+          ${isCmd ? `<button class="btn-ghost btn-sm" data-edit-doc="${d.id}">Éditer</button>` : ''}
+          ${isCmd ? `<button class="btn-danger btn-sm" data-del-doc="${d.id}">Suppr.</button>` : ''}
+        </div>
+      </header>
+      <div class="doc-card-body" id="doc-body-${d.id}" style="display:none;">
+        ${renderDocContent(d.content)}
+      </div>
+    </article>`;
+  }).join('');
+
+  list.querySelectorAll('[data-toggle-doc]').forEach(b => {
+    b.addEventListener('click', () => {
+      const id = b.dataset.toggleDoc;
+      const body = $(`doc-body-${id}`);
+      if (!body) return;
+      const open = body.style.display !== 'none';
+      body.style.display = open ? 'none' : '';
+      b.textContent = open ? 'Lire' : 'Réduire';
+    });
+  });
+  list.querySelectorAll('[data-edit-doc]').forEach(b => {
+    b.addEventListener('click', () => editDoc(b.dataset.editDoc));
+  });
+  list.querySelectorAll('[data-del-doc]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const d = db.documents.find(b.dataset.delDoc);
+      if (!d) return;
+      if (!await confirmDialog('Suppression', `Supprimer la fiche <strong>${escapeHTML(d.title)}</strong> ?`)) return;
+      await db.documents.delete(d.id);
+      logAction(`Doc supprimée — ${d.title}`, 'DOC');
+      toast('Fiche supprimée');
+    });
+  });
+}
+
+function resetDocForm() {
+  $('docEditId').value = '';
+  $('docTitle').value = '';
+  $('docCategory').value = '';
+  $('docContent').value = '';
+  $('docFormTitle').textContent = 'Nouvelle fiche';
+  $('docFormPanel').style.display = 'none';
+}
+function editDoc(id) {
+  const d = db.documents.find(id);
+  if (!d) return;
+  $('docEditId').value = d.id;
+  $('docTitle').value = d.title;
+  $('docCategory').value = d.category || '';
+  $('docContent').value = d.content;
+  $('docFormTitle').textContent = `Édition — ${d.title}`;
+  $('docFormPanel').style.display = '';
+  $('docFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+if ($('newDocBtn')) {
+  $('newDocBtn').addEventListener('click', () => {
+    resetDocForm();
+    $('docFormPanel').style.display = '';
+    $('docFormPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+if ($('docCancelBtn')) {
+  $('docCancelBtn').addEventListener('click', resetDocForm);
+}
+if ($('docForm')) {
+  $('docForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!isCmd) return;
+    const editId = $('docEditId').value;
+    const title = $('docTitle').value.trim();
+    const category = $('docCategory').value.trim();
+    const content = $('docContent').value.trim();
+    if (!title || !content) { toast('Titre et contenu requis'); return; }
+
+    if (editId) {
+      await db.documents.update(editId, { title, category, content });
+      logAction(`Doc mise à jour — ${title}`, 'DOC');
+      toast(`${title} mise à jour`);
+    } else {
+      await db.documents.insert({ id: db.uid(), title, category, content, createdBy: me.id, createdAt: Date.now(), updatedAt: Date.now() });
+      logAction(`Doc créée — ${title}`, 'DOC');
+      toast(`${title} créée`);
+    }
+    resetDocForm();
+  });
+}
 
 function renderUserAdmin() {
   const tbody = $('userTable');
@@ -1604,6 +1857,7 @@ function renderAll() {
   renderMyCerts();
   renderCertsCatalog();
   renderFormations();
+  renderDocs();
   if (isCmd) renderUserAdmin();
   renderOverview();
 }
