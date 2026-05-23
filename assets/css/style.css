@@ -1467,6 +1467,84 @@ body.tablet-boot::before {
 .status-active { background: rgba(167,139,250,0.12); color: var(--ok); }
 .status-reserve { background: rgba(255,255,255,0.06); color: var(--dim); }
 
+/* =================== OPS ARCHIVE (validées / terminées) =================== */
+.ops-archive {
+  margin: 14px 18px 18px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.ops-archive[open] { border-color: var(--border-2); }
+.ops-archive > summary {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--dim);
+  list-style: none;
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+.ops-archive > summary::-webkit-details-marker { display: none; }
+.ops-archive > summary:hover { background: var(--panel-2); color: var(--fg-2); }
+.ops-archive > summary svg:first-child { color: var(--ok); flex-shrink: 0; }
+.ops-archive > summary span:nth-of-type(1) { flex: 1; }
+.ops-archive .archive-count {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; letter-spacing: 0.08em; color: var(--fg-2);
+}
+.ops-archive .chev { transition: transform 0.2s; opacity: 0.6; }
+.ops-archive[open] > summary .chev { transform: rotate(180deg); }
+.ops-archive-list {
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column;
+}
+.ops-archive-row {
+  border-bottom: 1px solid var(--border);
+}
+.ops-archive-row:last-child { border-bottom: none; }
+.ops-archive-row-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ops-archive-row-head:hover { background: var(--panel-2); }
+.ops-archive-row.open > .ops-archive-row-head { background: var(--panel-2); }
+.ops-archive-row.open > .ops-archive-row-head .chev { transform: rotate(180deg); }
+.ops-archive-row-head .chev { transition: transform 0.2s; opacity: 0.5; flex-shrink: 0; }
+.ops-archive-name {
+  font-weight: 600; color: var(--fg); font-size: 13px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+.ops-archive-meta {
+  font-size: 11.5px; color: var(--dim);
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ops-archive-status {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: 0.16em; color: var(--ok);
+  background: rgba(167,139,250,0.1);
+  padding: 3px 9px; border-radius: 999px;
+  flex-shrink: 0;
+}
+.ops-archive-row-body { padding: 0 16px 14px; }
+.ops-archive-row-body:not([hidden]) { padding-top: 4px; }
+.ops-archive-row-body .op-card {
+  background: var(--bg-2);
+}
+
+/* Affichage spé principale auto */
+.dossier-primary-spec {
+  padding: 6px 0;
+}
+
 /* Bouton retour intégré dans la fiche */
 .dossier-back {
   display: inline-flex; align-items: center; gap: 8px;
@@ -1629,6 +1707,19 @@ body.tablet-boot::before {
 
   /* Mobile : view padding adapté */
   .view { padding: 14px 14px 24px; }
+
+  /* Mobile : la home doit pouvoir scroller (contenu trop grand pour tenir) */
+  .dash-body.lock-scroll {
+    height: auto !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .dash-body.lock-scroll .dash-main,
+  .dash-body.lock-scroll #view-home {
+    overflow: visible !important;
+    min-height: 0 !important;
+    flex: none !important;
+  }
 
   /* Topbar */
   .topbar { flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }

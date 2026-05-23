@@ -180,17 +180,22 @@ opForm.addEventListener('submit', (e) => {
 
 function renderOps() {
   const list = $('opsList');
-  const ops = db.ops.all().sort((a, b) => new Date(a.date) - new Date(b.date));
-  $('opsCount').textContent = ops.length;
+  const allOps = db.ops.all().sort((a, b) => new Date(a.date) - new Date(b.date));
+  $('opsCount').textContent = allOps.length;
 
-  if (ops.length === 0) {
+  if (allOps.length === 0) {
     list.innerHTML = '<p class="empty-state">Aucune opération programmée.</p>';
     return;
   }
 
+  // Séparer : ops actives (non validées = à venir/en cours) vs archivées (validées = terminées)
+  const activeOps = allOps.filter(o => !o.validated);
+  const archivedOps = allOps.filter(o => o.validated)
+    .sort((a, b) => new Date(b.date) - new Date(a.date)); // archives : plus récent en premier
+
   const totalActive = db.users.where(u => u.status === 'actif').length;
 
-  list.innerHTML = ops.map(op => {
+  const renderCard = (op) => {
     const myChecked = !!op.presences[me.id];
     const confirmed = Object.keys(op.presences).filter(k => op.presences[k]);
     const pct = totalActive > 0 ? Math.round((confirmed.length / totalActive) * 100) : 0;
@@ -317,7 +322,60 @@ function renderOps() {
         </div>
       </div>
     </article>`;
-  }).join('');
+  };
+
+  // Active ops first, then archived (validated) collapsed in <details>
+  const activeHTML = activeOps.length
+    ? activeOps.map(renderCard).join('')
+    : '<p class="empty-state">Aucune opération active.</p>';
+
+  let archivedHTML = '';
+  if (archivedOps.length) {
+    archivedHTML = `
+      <details class="ops-archive">
+        <summary>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>
+          <span>Opérations archivées</span>
+          <span class="archive-count">${archivedOps.length}</span>
+          <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M6 9l6 6 6-6"/></svg>
+        </summary>
+        <div class="ops-archive-list">
+          ${archivedOps.map(op => {
+            const confirmed = Object.keys(op.presences || {}).filter(k => op.presences[k]).length;
+            return `<div class="ops-archive-row" data-archive-toggle="${op.id}">
+              <div class="ops-archive-row-head">
+                <span class="ops-archive-name">${escapeHTML(op.name)}</span>
+                <span class="ops-archive-meta">${fmtDateTime(op.date)} · ${escapeHTML(op.zone)} · ${confirmed} effectif(s)</span>
+                <span class="ops-archive-status">VALIDÉE</span>
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+              <div class="ops-archive-row-body" id="archive-body-${op.id}" hidden></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </details>`;
+  }
+
+  list.innerHTML = activeHTML + archivedHTML;
+
+  // Expand archived row on click → render full card lazily inside its body
+  list.querySelectorAll('[data-archive-toggle]').forEach(row => {
+    row.querySelector('.ops-archive-row-head').addEventListener('click', () => {
+      const id = row.dataset.archiveToggle;
+      const body = $(`archive-body-${id}`);
+      const op = db.ops.find(id);
+      if (!body || !op) return;
+      if (body.hidden) {
+        body.innerHTML = renderCard(op);
+        body.hidden = false;
+        row.classList.add('open');
+      } else {
+        body.hidden = true;
+        body.innerHTML = '';
+        row.classList.remove('open');
+      }
+    });
+  });
 
   list.querySelectorAll('[data-presence]').forEach(cb => {
     cb.addEventListener('change', (e) => {
@@ -1276,10 +1334,19 @@ function renderDossier(userId) {
   const absencesAll = db.absences.where(a => a.operator === u.id).sort((a, b) => (b.ts || 0) - (a.ts || 0));
   const absencesCount = absencesAll.length;
 
-  // Spécialisations
+  // Spécialisations — calcule la principale automatiquement
   const specs = db.specializations.all().filter(s =>
     (s.members || []).includes(u.id) || s.leadId === u.id || s.adjId === u.id
   );
+  // Priorité : LEAD > ADJ > 1er membre
+  const primarySpec = (() => {
+    const asLead = specs.find(s => s.leadId === u.id);
+    if (asLead) return { name: asLead.name, role: 'LEAD' };
+    const asAdj  = specs.find(s => s.adjId === u.id);
+    if (asAdj) return { name: asAdj.name, role: 'ADJ' };
+    if (specs.length) return { name: specs[0].name, role: 'MEMBRE' };
+    return null;
+  })();
 
   // Certifs et formateur
   const userCertList = userCerts(u.id);
@@ -1345,8 +1412,12 @@ function renderDossier(userId) {
         <label><span>Date d'incorporation</span>
           <input type="date" id="dossierJoinedAt" value="${u.joinedAt || ''}" ${canEdit ? '' : 'disabled'}/>
         </label>
-        <label><span>Spécialité principale</span>
-          <input type="text" id="dossierPrimarySpec" value="${escapeHTML(u.primarySpec || '')}" placeholder="Sniper, Médic, Démineur..." ${canEdit ? '' : 'disabled'}/>
+        <label><span>Spécialité principale <em style="font-style:normal;color:var(--dim-2);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;margin-left:6px;">· auto</em></span>
+          <div class="dossier-primary-spec">
+            ${primarySpec
+              ? `<span class="trainer-chip" style="font-size:12px;padding:6px 12px;">${escapeHTML(primarySpec.name)}<span style="color:var(--dim);margin-left:8px;font-size:10px;letter-spacing:0.1em;">${primarySpec.role}</span></span>`
+              : `<span class="empty-state" style="padding:6px 0;display:inline-block;">Non affecté à une spécialisation.</span>`}
+          </div>
         </label>
         <label class="full"><span>Biographie / notes</span>
           <textarea id="dossierBio" rows="5" placeholder="Parcours, antécédents, mentions..." ${canEdit ? '' : 'disabled'}>${escapeHTML(u.bio || '')}</textarea>
@@ -1430,7 +1501,6 @@ function renderDossier(userId) {
       const patch = {
         bio: $('dossierBio').value.trim(),
         joinedAt: $('dossierJoinedAt').value || null,
-        primarySpec: $('dossierPrimarySpec').value.trim(),
       };
       try {
         await db.dossier.update(u.id, patch);
