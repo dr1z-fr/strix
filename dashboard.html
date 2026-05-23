@@ -100,6 +100,12 @@
           <span class="app-tile-label">Documentation</span>
           <span class="app-tile-badge" id="badgeDocs">0</span>
         </button>
+        <button class="app-tile" data-view="medical" id="tileMedical">
+          <div class="app-tile-icon-wrap" style="color:#ef4444;background:rgba(239,68,68,0.1);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v20M2 12h20" stroke-linecap="round"/></svg>
+          </div>
+          <span class="app-tile-label">Médical</span>
+        </button>
         <button class="app-tile" data-view="logs" id="tileLogs">
           <div class="app-tile-icon-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h12"/><circle cx="20" cy="18" r="2"/></svg>
@@ -362,6 +368,20 @@
       </div>
     </section>
 
+    <!-- MEDICAL — casiers médicaux (Lt+ et spé médicale) -->
+    <section class="view" id="view-medical">
+      <div class="panel">
+        <header class="panel-header">
+          <h3>Casiers médicaux des effectifs</h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span class="tag" id="medicalCount">0</span>
+            <input type="search" id="medicalSearch" placeholder="Rechercher un opérateur…" style="background:var(--bg-3);border:1px solid var(--border);color:var(--fg);padding:6px 10px;border-radius:8px;font-size:12px;width:200px;"/>
+          </div>
+        </header>
+        <div class="medical-list" id="medicalList"></div>
+      </div>
+    </section>
+
     <!-- LOGS — journal d'activité (Lt et +) -->
     <section class="view" id="view-logs">
       <div class="panel">
@@ -389,7 +409,6 @@
           <input type="hidden" id="userEditId"/>
           <label><span>Nom de code</span><input type="text" id="userId" placeholder="RAVEN, WOLF-7, K-09..." required/></label>
           <label><span>Code d'accès</span><input type="text" id="userPwd" placeholder="********"/></label>
-          <label><span>Nom complet</span><input type="text" id="userName2" placeholder="J. Mercier" required/></label>
           <label><span>Grade</span>
             <select id="userGrade" required></select>
           </label>
@@ -421,7 +440,7 @@
           <h3>Annuaire complet</h3>
         </header>
         <table class="data-table">
-          <thead><tr><th>Nom de code</th><th>Nom</th><th>Grade</th><th>Catégorie</th><th>Statut</th><th>Gestion ops</th><th></th></tr></thead>
+          <thead><tr><th>Nom de code</th><th>Grade</th><th>Catégorie</th><th>Statut</th><th>Gestion ops</th><th></th></tr></thead>
           <tbody id="userTable"></tbody>
         </table>
       </div>

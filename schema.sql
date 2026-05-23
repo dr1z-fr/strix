@@ -157,6 +157,24 @@ CREATE TABLE IF NOT EXISTS documents (
 CREATE INDEX IF NOT EXISTS documents_cat_idx ON documents (category);
 CREATE INDEX IF NOT EXISTS documents_updated_idx ON documents (updated_at DESC);
 
+-- =========================================================
+-- MEDICAL : casier médical (Lt+ et spé médicale uniquement)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS medical_records (
+  user_id            TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  blood_type         TEXT,                 -- A+/A-/B+/B-/O+/O-/AB+/AB-
+  allergies          TEXT,
+  conditions         TEXT,                 -- pathologies, antécédents
+  treatments         TEXT,                 -- traitements en cours
+  emergency_contact  TEXT,
+  notes              TEXT,
+  fitness_status     TEXT DEFAULT 'apte',  -- apte / restriction / inapte
+  last_checkup       DATE,
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_by         TEXT REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS medical_updated_idx ON medical_records (updated_at DESC);
+
 -- L'utilisateur initial "Drui" (Colonel) sera créé automatiquement par
 -- l'API au premier login si la table users est vide.
 -- Mot de passe par défaut : strix2025

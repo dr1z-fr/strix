@@ -1654,6 +1654,75 @@ body.tablet-boot::before {
   font-family: var(--mono); font-size: 10px; color: var(--dim);
 }
 
+/* =================== MEDICAL APP =================== */
+.medical-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 18px;
+}
+.medical-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color .15s;
+}
+.medical-card.is-open { border-color: var(--ok); }
+.medical-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background: transparent;
+  border: 0;
+  color: var(--fg);
+  cursor: pointer;
+  text-align: left;
+}
+.medical-head:hover { background: rgba(255,255,255,0.03); }
+.medical-id { flex: 1; min-width: 0; }
+.medical-chevron { color: var(--dim); font-size: 14px; width: 18px; text-align: center; }
+.medical-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 18px;
+  border-top: 1px solid var(--border);
+  background: rgba(0,0,0,0.15);
+}
+.medical-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.medical-form input,
+.medical-form select,
+.medical-form textarea {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font: inherit;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.medical-form textarea { resize: vertical; min-height: 56px; font-family: inherit; }
+.medical-form input:focus,
+.medical-form select:focus,
+.medical-form textarea:focus { outline: none; border-color: var(--ok); }
+.medical-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
 /* =================== MOBILE RESPONSIVE =================== */
 @media (max-width: 768px) {
   /* Layout */
@@ -1734,6 +1803,9 @@ body.tablet-boot::before {
   .data-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .data-table th,
   .data-table td { white-space: nowrap; }
+
+  /* Medical cards : full width on mobile */
+  .medical-grid { grid-template-columns: 1fr !important; }
 
   /* Grids */
   .op-presence { grid-template-columns: 1fr; }

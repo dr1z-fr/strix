@@ -16,6 +16,7 @@ let isLeader = false;
 let isCmd    = false;
 let canManageCerts = false;
 let canViewDossier = false;
+let canViewMedical = false;
 let currentView = 'home';
 
 // ---- Helpers ----
@@ -94,6 +95,9 @@ function setupUserPanel() {
   if (!canViewDossier) {
     const tl = $('tileLogs'); if (tl) tl.style.display = 'none';
   }
+  if (!canViewMedical) {
+    const tm = $('tileMedical'); if (tm) tm.style.display = 'none';
+  }
   if (!isLeader) $('opFormPanel').style.display = 'none';
   if (!isCmd) $('specFormPanel').style.display = 'none';
 }
@@ -116,6 +120,7 @@ const VIEWS = {
   formations: { title: 'Formations',       crumb: 'Formations' },
   docs:       { title: 'Documentation',    crumb: 'Documentation' },
   logs:       { title: 'Journal d\'activité', crumb: 'Logs' },
+  medical:    { title: 'Médical',          crumb: 'Médical' },
   admin:      { title: 'Administration',   crumb: 'Admin' },
   dossier:    { title: 'Dossier',          crumb: 'Dossier' },
 };
@@ -1050,7 +1055,6 @@ function resetUserForm() {
   $('userId').disabled = false;
   $('userPwd').value = '';
   $('userPwd').placeholder = '********';
-  $('userName2').value = '';
   $('userGrade').value = 'recrue';
   $('userStatus').value = 'actif';
   $('userCanManageOps').checked = false; // recrue default
@@ -1069,10 +1073,11 @@ userForm?.addEventListener('submit', (e) => {
   const grade = db.gradeByKey(gradeKey);
   if (!grade) { toast('Grade invalide'); return; }
 
+  const codeName = $('userId').value.trim();
   const data = {
-    id: $('userId').value.trim(),
+    id: codeName,
     password: $('userPwd').value,
-    name: $('userName2').value.trim(),
+    name: codeName,                       // nom complet = nom de code (champ supprimé)
     grade: gradeKey,
     role: grade.role,
     status: $('userStatus').value,
@@ -1551,11 +1556,10 @@ function renderUserAdmin() {
     const outranks = targetTier < myTier && u.id !== me.id;
     return `
     <tr ${outranks ? 'class="row-locked"' : ''}>
-      <td class="mono">${u.id}</td>
       <td>
         <div style="display:flex;align-items:center;gap:10px;">
-          <div class="mini-avatar">${initials(u.name)}</div>
-          <span>${u.name}</span>
+          <div class="mini-avatar">${initials(u.id)}</div>
+          <span class="mono">${u.id}</span>
         </div>
       </td>
       <td>${g ? g.label : '<span style="color:var(--dim)">—</span>'}</td>
@@ -1582,7 +1586,6 @@ function renderUserAdmin() {
       $('userId').disabled = true;
       $('userPwd').value = ''; // password is never returned by the API
       $('userPwd').placeholder = 'Laisser vide pour conserver le code actuel';
-      $('userName2').value = u.name;
       $('userGrade').value = u.grade || 'recrue';
       $('userStatus').value = u.status || 'actif';
       $('userCanManageOps').checked = !!u.canManageOps;
@@ -2199,6 +2202,151 @@ function renderFormations() {
 }
 
 // =========================================================
+//                       MEDICAL (casiers médicaux)
+// =========================================================
+let medicalSearchTerm = '';
+let medicalExpanded = new Set();
+
+function renderMedical() {
+  const root = $('medicalList');
+  if (!root) return;
+  if (!canViewMedical) {
+    root.innerHTML = '<p class="empty-state">Accès réservé aux officiers et personnel médical.</p>';
+    return;
+  }
+  // Effectifs : on n'affiche que les utilisateurs (pas les supérieurs hors portée si pas Lt+).
+  const myTier = myGrade?.tier ?? 99;
+  const users = db.users.all()
+    .filter(u => canViewDossier || (gradeOf(u)?.tier ?? 99) >= myTier)
+    .sort((a, b) => (gradeOf(a)?.tier || 99) - (gradeOf(b)?.tier || 99));
+
+  const term = medicalSearchTerm.trim().toLowerCase();
+  const filtered = term
+    ? users.filter(u => u.id.toLowerCase().includes(term))
+    : users;
+
+  $('medicalCount').textContent = `${filtered.length} effectif${filtered.length > 1 ? 's' : ''}`;
+
+  const fitnessTag = (s) => {
+    if (s === 'inapte')      return '<span class="tag" style="background:rgba(239,68,68,.15);color:#fca5a5;border-color:rgba(239,68,68,.3);">⛔ Inapte</span>';
+    if (s === 'restriction') return '<span class="tag" style="background:rgba(234,179,8,.15);color:#fde047;border-color:rgba(234,179,8,.3);">⚠ Restriction</span>';
+    return '<span class="tag" style="background:rgba(34,197,94,.15);color:#86efac;border-color:rgba(34,197,94,.3);">✓ Apte</span>';
+  };
+
+  root.innerHTML = filtered.map(u => {
+    const m = db.medical.forUser(u.id) || { userId: u.id, fitnessStatus: 'apte' };
+    const g = gradeOf(u);
+    const isOpen = medicalExpanded.has(u.id);
+    const updatedTxt = m.updatedAt
+      ? `MAJ ${new Date(m.updatedAt).toLocaleDateString('fr-FR')}${m.updatedBy ? ' — ' + m.updatedBy : ''}`
+      : 'Aucun casier';
+    return `
+      <div class="medical-card${isOpen ? ' is-open' : ''}" data-medical="${u.id}">
+        <button class="medical-head" data-toggle-medical="${u.id}" type="button">
+          <div class="mini-avatar">${initials(u.id)}</div>
+          <div class="medical-id">
+            <div class="mono" style="font-weight:600;">${u.id}</div>
+            <div style="font-size:11px;color:var(--dim);">${g ? g.label : '—'} · ${updatedTxt}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            ${m.bloodType ? `<span class="tag" style="background:rgba(239,68,68,.15);color:#fca5a5;border-color:rgba(239,68,68,.3);">🩸 ${m.bloodType}</span>` : ''}
+            ${fitnessTag(m.fitnessStatus)}
+            <span class="medical-chevron">${isOpen ? '▾' : '▸'}</span>
+          </div>
+        </button>
+        ${isOpen ? `
+        <form class="medical-form" data-medical-form="${u.id}">
+          <div class="medical-grid">
+            <label>Groupe sanguin
+              <select name="bloodType">
+                <option value="">—</option>
+                ${['O-','O+','A-','A+','B-','B+','AB-','AB+'].map(t => `<option value="${t}" ${m.bloodType === t ? 'selected' : ''}>${t}</option>`).join('')}
+              </select>
+            </label>
+            <label>Aptitude
+              <select name="fitnessStatus">
+                <option value="apte" ${m.fitnessStatus === 'apte' ? 'selected' : ''}>Apte</option>
+                <option value="restriction" ${m.fitnessStatus === 'restriction' ? 'selected' : ''}>Restriction</option>
+                <option value="inapte" ${m.fitnessStatus === 'inapte' ? 'selected' : ''}>Inapte</option>
+              </select>
+            </label>
+            <label>Dernière visite
+              <input type="date" name="lastCheckup" value="${m.lastCheckup || ''}"/>
+            </label>
+            <label>Contact d'urgence
+              <input type="text" name="emergencyContact" value="${m.emergencyContact || ''}" placeholder="Nom, téléphone…"/>
+            </label>
+          </div>
+          <label>Allergies
+            <textarea name="allergies" rows="2" placeholder="Aucune connue">${m.allergies || ''}</textarea>
+          </label>
+          <label>Antécédents / Pathologies
+            <textarea name="conditions" rows="2">${m.conditions || ''}</textarea>
+          </label>
+          <label>Traitements en cours
+            <textarea name="treatments" rows="2">${m.treatments || ''}</textarea>
+          </label>
+          <label>Notes du médecin
+            <textarea name="notes" rows="3">${m.notes || ''}</textarea>
+          </label>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button type="button" class="btn-ghost btn-sm" data-cancel-medical="${u.id}">Annuler</button>
+            <button type="submit" class="btn-primary btn-sm">Enregistrer le casier</button>
+          </div>
+        </form>` : ''}
+      </div>`;
+  }).join('') || '<p class="empty-state">Aucun effectif.</p>';
+
+  // Toggles
+  root.querySelectorAll('[data-toggle-medical]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.toggleMedical;
+      if (medicalExpanded.has(id)) medicalExpanded.delete(id);
+      else medicalExpanded.add(id);
+      renderMedical();
+    });
+  });
+  root.querySelectorAll('[data-cancel-medical]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      medicalExpanded.delete(btn.dataset.cancelMedical);
+      renderMedical();
+    });
+  });
+  root.querySelectorAll('[data-medical-form]').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userId = form.dataset.medicalForm;
+      const fd = new FormData(form);
+      try {
+        await db.medical.upsert({
+          userId,
+          bloodType: fd.get('bloodType') || '',
+          fitnessStatus: fd.get('fitnessStatus') || 'apte',
+          lastCheckup: fd.get('lastCheckup') || null,
+          emergencyContact: fd.get('emergencyContact') || '',
+          allergies: fd.get('allergies') || '',
+          conditions: fd.get('conditions') || '',
+          treatments: fd.get('treatments') || '',
+          notes: fd.get('notes') || '',
+        });
+        toast('Casier médical mis à jour');
+        medicalExpanded.delete(userId);
+        renderMedical();
+      } catch (err) { /* toast déjà émis */ }
+    });
+  });
+}
+
+// Search wiring (idempotent — listener attaché une seule fois)
+document.addEventListener('DOMContentLoaded', () => {
+  const s = $('medicalSearch');
+  if (s) s.addEventListener('input', (e) => {
+    medicalSearchTerm = e.target.value;
+    renderMedical();
+  });
+});
+
+// =========================================================
 //                       MASTER RENDER
 // =========================================================
 function renderAll() {
@@ -2214,6 +2362,7 @@ function renderAll() {
   renderCertsCatalog();
   renderFormations();
   renderDocs();
+  if (canViewMedical) renderMedical();
   if (isCmd) renderUserAdmin();
   renderHome();
   if (currentView === 'dossier' && currentDossierUserId) renderDossier(currentDossierUserId);
@@ -2244,6 +2393,11 @@ window.STRIX.toast = toast;
   isCmd    = me.role === 'cmd';
   canManageCerts = (myGrade?.tier || 99) <= 6;
   canViewDossier = (myGrade?.tier || 99) <= 5;
+  // Médical : Lt+ OU membre/lead/adj d'une spé "médic"/"tccc"
+  const medSpecs = db.specializations.all().filter(s => /m[ée]dic|tccc/i.test(s.name || ''));
+  canViewMedical = canViewDossier || medSpecs.some(s =>
+    s.leadId === me.id || s.adjId === me.id || (s.members || []).includes(me.id)
+  );
 
   $('viewTitle').textContent = VIEWS[currentView]?.title || 'STRIX';
   setupUserPanel();
