@@ -129,19 +129,60 @@ Intégration webhooks vers plusieurs canaux Discord :
 
 ## Hiérarchie des grades
 
-| Grade | Sigle | Groupe | Rôle système |
-|---|:---:|---|:---:|
-| Colonel | COL | Direction | CMD |
-| Lieutenant-Colonel | LCL | Direction | CMD |
-| Commandant | CDT | Direction | CMD |
-| Capitaine | CNE | Officiers | Lead |
-| Lieutenant | LT | Officiers | Lead |
-| Major | MAJ | Sous-Officiers | Lead |
-| Adjudant | ADJ | Sous-Officiers | Lead |
-| Sergent | SGT | Sous-Officiers | Lead |
-| Caporal | CPL | Militaires du Rang | Op |
-| Opérateur 1ʳᵉ Classe | OP1 | Militaires du Rang | Op |
-| Opérateur 2ⁿᵈᵉ Classe | OP2 | Militaires du Rang | Op |
-| Recrue | REC | Militaires du Rang | Op |
+| Tier | Grade | Sigle | Groupe | Rôle | `canManageOps` |
+|:---:|---|:---:|---|:---:|:---:|
+| 1 | Colonel | COL | Direction | `cmd` | ✅ |
+| 2 | Lieutenant-Colonel | LCL | Direction | `cmd` | ✅ |
+| 3 | Commandant | CDT | Direction | `cmd` | ✅ |
+| 4 | Capitaine | CNE | Officiers | `lead` | ✅ |
+| 5 | Lieutenant | LT | Officiers | `lead` | ✅ |
+| 6 | Major | MAJ | Sous-Officiers | `lead` | ✅ |
+| 7 | Adjudant | ADJ | Sous-Officiers | `lead` | ✅ |
+| 8 | Sergent | SGT | Sous-Officiers | `lead` | ✅ |
+| 9 | Caporal | CPL | Militaires du Rang | `op` | ❌ |
+| 10 | Opérateur 1ʳᵉ Classe | OP1 | Militaires du Rang | `op` | ❌ |
+| 11 | Opérateur 2ⁿᵈᵉ Classe | OP2 | Militaires du Rang | `op` | ❌ |
+| 12 | Recrue | REC | Militaires du Rang | `op` | ❌ |
 
-> Pour le détail complet des permissions par action et par grade, voir [`PERMISSIONS.md`](PERMISSIONS.md).
+---
+
+## Matrice des permissions — vue rapide
+
+> Colonnes : **REC** = Recrue / OP2 / OP1 · **CPL** = Caporal · **CPL+** = Caporal avec `canManageOps` · **SGT** = Sergent / Adjudant · **MAJ** = Major · **LT** = Lieutenant / Capitaine · **CMD** = Commandant / Lt-Colonel / Colonel.
+> Légende : ✅ autorisé · 🟡 conditionnel · ❌ interdit.
+
+| Fonctionnalité | REC | CPL | CPL+ | SGT | MAJ | LT | CMD |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Se connecter, changer son code, voir le tableau de bord | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Toggle sa propre présence sur une op | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Déclarer sa propre absence | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| S'inscrire à une formation non validée | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Lire la documentation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Créer / valider / supprimer une opération | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Modifier le roster d'une op (autrui) | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Déclarer une absence pour autrui | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Gérer les membres / entraînements de **sa** spé (resp/adj) | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | ✅ |
+| Créer une formation (formateur habilité) | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | ✅ |
+| Valider une formation (délivre les certifs) | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | ✅ |
+| Gérer le **catalogue** des certifications & révocations | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Consulter le **journal d'activité** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Voir / éditer un **dossier RP** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Infliger / retirer une **sanction** | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Créer une **spécialisation** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Créer / éditer une fiche de **documentation** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Créer / éditer / supprimer un **opérateur** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+### Seuils techniques côté serveur
+
+| Seuil | Définition | Couvre |
+|---|---|---|
+| `isCmd` | tier ≤ 3 | Administration, documentation, CRUD spés |
+| `canManageOps` | flag individuel (par défaut tier ≤ 8) | Ops, absences pour autrui |
+| `canManageCerts` | tier ≤ 6 (Major+) | Catalogue certifs, révocation |
+| `canViewDossier` | tier ≤ 5 (Lt+) | Dossier RP, sanctions, journal |
+| `outranksMe` | tier(cible) < tier(soi) | Garde-fou hiérarchique sur toute action ciblant autrui |
+
+> 🔒 **Garde-fous hiérarchiques** appliqués partout : impossible de modifier, sanctionner, supprimer ou promouvoir au-dessus de son propre grade.
+> 🔐 **Verrou de premier login** : tant que `must_change_password` est levé, seules les actions `init` et `auth.changePassword` sont autorisées par l'API.
+
+> 📖 Pour le détail complet des permissions par action et par grade, voir [`PERMISSIONS.md`](PERMISSIONS.md).

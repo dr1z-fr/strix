@@ -1,6 +1,6 @@
-# STRIX — Permissions par grade
+# STRIX — Permissions par grade et fonctionnalité
 
-> Document de référence pour les opérateurs et chefs d'équipe.
+> Document de référence — reflète l'état exact des règles serveur (`api/db.js`).
 > Légende : ✅ autorisé · 🟡 conditionnel (voir notes) · ❌ interdit.
 
 ---
@@ -149,38 +149,154 @@ Tout nouvel opérateur (créé par le `cmd`) doit changer son code d'accès à s
 
 ### Formations & Certifications
 
-Les **certifications** (CQB, MED, SNI, …) sont un **catalogue** géré par le `cmd`. Pour chaque certification, le `cmd` désigne une liste de **formateurs habilités** (peu importe leur grade).
+Les **certifications** (CQB, MED, SNI, …) sont un **catalogue** dont la création/modification/suppression est réservée au seuil **`canManageCerts`** (tier ≤ 6 = **Major et au-dessus**). Pour chaque certification, un membre de ce seuil désigne une liste de **formateurs habilités** (peu importe leur grade).
 
-- Seul un formateur habilité (ou le `cmd`) peut **créer une formation** ciblant cette certification.
-- Le formateur gère le roster (qui est inscrit / présent) comme pour une opération.
-- Les opérateurs peuvent s'**inscrire eux-mêmes** à une formation tant qu'elle n'est pas validée.
-- Quand le formateur **valide la formation**, tous les opérateurs marqués présents reçoivent automatiquement la certification.
-- La validation est **réversible** : si le formateur annule, les certifications délivrées par cette formation sont révoquées.
-- Le `cmd` peut **révoquer manuellement** une certification à tout moment (chip × dans le catalogue).
+- Seul un formateur habilité (ou un `cmd`) peut **créer une formation** ciblant cette certification.
+- Le formateur gère le roster comme pour une opération.
+- Les opérateurs peuvent s'**inscrire eux-mêmes** tant qu'elle n'est pas validée.
+- À la **validation**, tous les opérateurs marqués présents reçoivent automatiquement la certification.
+- La validation est **réversible** : la dévalidation révoque les certifications délivrées par cette formation.
+- Un grade `canManageCerts` peut **révoquer manuellement** une certification (`certs.revoke`).
+
+### Documentation
+
+Fiches de doctrine consultables par tous les opérateurs connectés. Création / modification / suppression : **`cmd` uniquement** (tier ≤ 3).
+
+### Dossier RP & Sanctions
+
+Les **dossiers RP** (bio, date d'incorporation, spé principale) et les **sanctions** (avertissement, blâme, …) sont :
+- Visibles uniquement par **Lieutenant et au-dessus** (tier ≤ 5 = `canViewDossier`).
+- Modifiables par le même seuil, **avec garde-fou hiérarchique** : on ne peut pas éditer le dossier ni infliger / supprimer une sanction visant un opérateur de tier strictement supérieur.
+
+### Journal d'activité (Logs)
+
+Le journal système (50 dernières entrées) est consultable par **Lieutenant et au-dessus** (tier ≤ 5). L'écriture (`log.insert`) est :
+- Réservée aux utilisateurs authentifiés.
+- Validée côté serveur : `pill` doit appartenir à une whitelist, `text` est tronqué à 280 caractères, le champ `who` est forcé à l'identité réelle du token (impossible de se faire passer pour un autre).
+
+### Verrou « changement de mot de passe obligatoire »
+
+Tant que le flag `must_change_password` est levé sur un compte, **toute action API autre que `init` et `auth.changePassword` est refusée** côté serveur (`403 must_change_password`). Le flag est posé à la création du compte ou par un `cmd` qui réassigne un nouveau code.
 
 ---
 
-## 4. Résumé — qui peut faire quoi en une page
+## 4. Matrice complète — qui peut faire quoi
 
-| Action | REC · OP2 · OP1 | CPL | CPL+canMgOps | SGT · ADJ · MAJ | LT · CNE | CDT · LCL · COL |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| Toggle sa présence | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Déclarer ses absences | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Créer/annuler une op | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Valider une op | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Modifier roster d'autrui | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Absence pour autrui | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Gérer membres de SA spé (resp/adj) | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | ✅ |
-| Créer/supprimer une spé | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| S'inscrire à une formation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Créer/valider une formation (par certif) | ⁶ | ⁶ | ⁶ | ⁶ | ⁶ | ✅ |
-| Créer/supprimer une certification | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Révoquer une certification d'un opérateur | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Créer/éditer/supprimer un opérateur | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+> Colonnes : **REC** = Recrue / OP2 / OP1, **CPL** = Caporal sans `canManageOps`, **CPL+** = Caporal avec `canManageOps`, **SGT** = Sergent / Adjudant, **MAJ** = Major, **LT** = Lieutenant / Capitaine, **CMD** = Commandant / Lt-Colonel / Colonel.
+
+### Authentification & profil personnel
+
+| Action | REC | CPL | CPL+ | SGT | MAJ | LT | CMD |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Se connecter | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Changer son propre mot de passe | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Consulter le tableau de bord (KPI, pyramide) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Consulter l'effectif et les spécialisations | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+### Opérations
+
+| Action | REC | CPL | CPL+ | SGT | MAJ | LT | CMD |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Toggle **sa propre** présence (op non validée) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Modifier sa présence sur une op **validée** | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Modifier le roster d'**autrui** | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Créer une opération | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Valider / dévalider une opération | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Annuler / supprimer une opération | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Éditer les **notes** d'op (manager) | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+### Absences
+
+| Action | REC | CPL | CPL+ | SGT | MAJ | LT | CMD |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Déclarer **sa propre** absence | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Déclarer une absence pour **autrui** | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Retirer son absence ou celle qu'il a déclarée | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Retirer **n'importe quelle** absence | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+### Spécialisations & entraînements
+
+| Action | REC | CPL | CPL+ | SGT | MAJ | LT | CMD |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Toggle **sa propre** présence à un entraînement (en tant que membre) | 🟡¹ | 🟡¹ | 🟡¹ | 🟡¹ | 🟡¹ | 🟡¹ | ✅ |
+| Créer / supprimer un entraînement de **sa** spé (resp/adj) | 🟡² | 🟡² | 🟡² | 🟡² | 🟡² | 🟡² | ✅ |
+| Modifier la liste des présents d'un entraînement | 🟡² | 🟡² | 🟡² | 🟡² | 🟡² | 🟡² | ✅ |
+| Gérer les membres d'une spé (resp/adj uniquement) | 🟡² | 🟡² | 🟡² | 🟡² | 🟡² | 🟡² | ✅ |
+| Créer une spécialisation | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Modifier nom / description / resp / adj d'une spé | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Supprimer une spécialisation | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+¹ Uniquement si l'opérateur est **membre / lead / adj** de la spé concernée.
+² Uniquement si l'opérateur est **Responsable** ou **Adjoint** de la spé concernée.
+
+### Certifications & formations
+
+| Action | REC | CPL | CPL+ | SGT | MAJ | LT | CMD |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Consulter le catalogue + ses propres certifs | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| S'inscrire / se désinscrire à une formation non validée | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Créer une formation pour une certif | 🟡³ | 🟡³ | 🟡³ | 🟡³ | 🟡³ | 🟡³ | ✅ |
+| Modifier le roster ou les méta-données d'une formation | 🟡³ | 🟡³ | 🟡³ | 🟡³ | 🟡³ | 🟡³ | ✅ |
+| Valider / dévalider une formation (délivre les certifs) | 🟡³ | 🟡³ | 🟡³ | 🟡³ | 🟡³ | 🟡³ | ✅ |
+| Supprimer une formation (créateur ou formateur) | 🟡⁴ | 🟡⁴ | 🟡⁴ | 🟡⁴ | 🟡⁴ | 🟡⁴ | ✅ |
+| Créer / modifier / supprimer une certification | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌* |
+| Révoquer manuellement une certification | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌* |
+
+³ Uniquement si l'opérateur est **formateur habilité** sur la certification ciblée. Désignation par un grade `canManageCerts`.
+⁴ Formateur habilité **OU** créateur de la formation **OU** `cmd`.
+\* Pour la création/modif/suppression du **catalogue** des certifs et la révocation manuelle : seuil `canManageCerts` = **tier ≤ 6 (Major et plus haut)**, donc également LT, CNE, CDT, LCL, COL.
+
+### Documentation
+
+| Action | REC | CPL | CPL+ | SGT | MAJ | LT | CMD |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Lire les fiches de documentation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Créer / éditer / supprimer une fiche | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+### Dossier RP & Sanctions (`canViewDossier` = tier ≤ 5)
+
+| Action | REC | CPL | CPL+ | SGT | MAJ | LT | CMD |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Consulter le dossier RP d'un opérateur | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Modifier un dossier RP | ❌ | ❌ | ❌ | ❌ | ❌ | ✅⁵ | ✅⁵ |
+| Infliger une sanction | ❌ | ❌ | ❌ | ❌ | ❌ | ✅⁵ | ✅⁵ |
+| Retirer une sanction | ❌ | ❌ | ❌ | ❌ | ❌ | ✅⁵ | ✅⁵ |
+
+⁵ Garde-fou hiérarchique : impossible d'éditer le dossier, d'infliger ou de supprimer une sanction visant un **supérieur strict**.
+
+### Journal d'activité (Logs)
+
+| Action | REC | CPL | CPL+ | SGT | MAJ | LT | CMD |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Consulter le journal | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Émettre une entrée de log (déclenchée par les actions) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+### Administration des utilisateurs (`isCmd`)
+
+| Action | REC | CPL | CPL+ | SGT | MAJ | LT | CMD |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Créer un opérateur | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅⁶ |
+| Éditer nom / grade / statut / `canManageOps` | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅⁶ |
+| Réassigner un mot de passe (force le reset) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅⁶ |
+| Supprimer un opérateur | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅⁶ |
+| S'auto-supprimer | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+⁶ Garde-fou hiérarchique :
+- Un `cmd` ne peut **jamais** modifier ni supprimer un opérateur de **tier strictement supérieur**.
+- Un `cmd` ne peut **jamais** créer ou promouvoir quiconque à un tier supérieur au sien.
 
 ---
 
-⁶ Uniquement si l'opérateur a été désigné **formateur habilité** sur la certification ciblée par le `cmd`, peu importe son grade.
+## 5. Synthèse des seuils serveur
+
+| Seuil | Définition | Concerne |
+|---|---|---|
+| `isCmd(me)` | `me.role === 'cmd'` (tier ≤ 3) | Users, Documents, Spécialisations (CRUD) |
+| `canManageOps(me)` | `isCmd` **OU** flag individuel `canManageOps` | Création/validation/roster d'op, absences pour autrui |
+| `canManageCerts(me)` | tier ≤ 6 (**Major+**) | Catalogue des certifications, révocation manuelle |
+| `canViewDossier(me)` | tier ≤ 5 (**Lieutenant+**) | Dossier RP, sanctions, journal d'activité |
+| `outranksMe(target)` | tier(target) < tier(me) | Garde-fou hiérarchique sur toute action ciblant autrui |
+| `must_change_password` | flag par utilisateur | Bloque toute action API autre que `init` et `auth.changePassword` |
 
 ---
 
