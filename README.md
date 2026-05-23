@@ -158,7 +158,9 @@ Intégration webhooks vers plusieurs canaux Discord :
 | Déclarer sa propre absence | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | S'inscrire à une formation non validée | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Lire la documentation | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Créer / valider / supprimer une opération | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Créer / valider une opération | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Supprimer une op **non** validée | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Dévalider / supprimer** une op **validée** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Modifier le roster d'une op (autrui) | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Déclarer une absence pour autrui | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Gérer les membres / entraînements de **sa** spé (resp/adj) | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | 🟡 | ✅ |

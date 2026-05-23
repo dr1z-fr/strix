@@ -392,9 +392,14 @@ export default async function handler(req, res) {
       // Compose the update with strict per-field permission checks.
       const fields = []; const values = []; let i = 1;
 
-      // 1. Toggling validation status — managers only, op cannot be re-validated by nobody.
+      // 1. Toggling validation status.
+      //   - Validation : tout manager (canManageOps).
+      //   - Dévalidation d'une op déjà validée : `cmd` uniquement (Commandant+).
       if (patch.validated !== undefined) {
         if (!canManageOps(meCam)) return res.status(403).json({ error: 'forbidden_validate' });
+        if (op.validated && !patch.validated && !isCmd(meCam)) {
+          return res.status(403).json({ error: 'forbidden_unvalidate_cmd_only' });
+        }
         fields.push(`validated = $${i++}`); values.push(!!patch.validated);
         fields.push(`validated_by = $${i++}`); values.push(patch.validated ? meCam.id : null);
       }
@@ -432,8 +437,13 @@ export default async function handler(req, res) {
     }
     if (action === 'ops.delete') {
       if (!canManageOps(meCam)) return res.status(403).json({ error: 'forbidden' });
-      const { rows: opRows } = await db.query('SELECT id, name, date, zone FROM ops WHERE id = $1', [body.id]);
+      const { rows: opRows } = await db.query('SELECT id, name, date, zone, validated FROM ops WHERE id = $1', [body.id]);
       const opToDelete = opRows[0];
+      if (!opToDelete) return res.status(404).json({ error: 'not_found' });
+      // Une op validée (verrouillée) ne peut être supprimée que par un `cmd`.
+      if (opToDelete.validated && !isCmd(meCam)) {
+        return res.status(403).json({ error: 'forbidden_delete_validated_cmd_only' });
+      }
       await db.query('DELETE FROM ops WHERE id = $1', [body.id]);
       if (opToDelete) await notifyOpDeleted({
         ...opToDelete,

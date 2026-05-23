@@ -201,8 +201,10 @@ Tant que le flag `must_change_password` est levé sur un compte, **toute action 
 | Modifier sa présence sur une op **validée** | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Modifier le roster d'**autrui** | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Créer une opération | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Valider / dévalider une opération | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Annuler / supprimer une opération | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Valider** une opération | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Supprimer une op **non** validée | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Dévalider** (déverrouiller) une op validée | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Supprimer** une op validée | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Éditer les **notes** d'op (manager) | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 ### Absences

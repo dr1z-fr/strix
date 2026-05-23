@@ -255,10 +255,16 @@ function renderOps() {
     const locked = op.validated;
     let actions = '';
     if (isLeader) {
-      actions += op.validated
-        ? `<button class="btn-danger btn-sm" data-unvalidate="${op.id}">Déverrouiller</button>`
-        : `<button class="btn-primary btn-sm" data-validate="${op.id}">Valider · ${confirmed.length}</button>`;
-      actions += `<button class="btn-ghost btn-sm" data-delete="${op.id}">Supprimer</button>`;
+      if (op.validated) {
+        // Une op verrouillée ne peut être déverrouillée ou supprimée que par un `cmd`.
+        if (isCmd) {
+          actions += `<button class="btn-danger btn-sm" data-unvalidate="${op.id}">Déverrouiller</button>`;
+          actions += `<button class="btn-ghost btn-sm" data-delete="${op.id}">Supprimer</button>`;
+        }
+      } else {
+        actions += `<button class="btn-primary btn-sm" data-validate="${op.id}">Valider · ${confirmed.length}</button>`;
+        actions += `<button class="btn-ghost btn-sm" data-delete="${op.id}">Supprimer</button>`;
+      }
     }
 
     const banner = op.validated
