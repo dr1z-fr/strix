@@ -105,7 +105,7 @@ tickClock(); setInterval(tickClock, 1000);
 
 // ---- Navigation (mode tablette : home + apps full-screen) ----
 const VIEWS = {
-  home:       { title: 'STRIX',            crumb: 'HOME' },
+  home:       { title: '',                 crumb: 'HOME' },
   ops:        { title: 'Opérations',       crumb: 'Opérations' },
   absences:   { title: 'Absences',         crumb: 'Absences' },
   personnel:  { title: 'Personnel',        crumb: 'Personnel' },

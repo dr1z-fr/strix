@@ -6,73 +6,44 @@
   <title>STRIX // SECURE TERMINAL</title>
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
-<body class="login-body tablet-boot">
+<body class="tablet-boot">
 
-  <!-- Tablet status bar -->
-  <header class="tablet-statusbar">
-    <div class="tablet-statusbar-left">
-      <span class="tablet-statusbar-brand">STRIX</span>
-      <span class="tablet-statusbar-sub">Tactical Terminal v2.4</span>
-    </div>
-    <div class="tablet-statusbar-right">
-      <span class="tablet-statusbar-status"><i class="dot"></i> SECURE</span>
-      <span id="bootClock" class="tablet-statusbar-clock">--:--</span>
+  <!-- Status bar tablette -->
+  <header class="tab-statusbar">
+    <span class="tab-statusbar-brand">STRIX</span>
+    <div class="tab-statusbar-meta">
+      <span class="tab-statusbar-secure"><i class="dot"></i> SECURE</span>
+      <span id="bootClock">--:--</span>
     </div>
   </header>
 
-  <main class="login-wrapper tablet-lockscreen">
-    <!-- Big clock floating above card -->
-    <div class="boot-clock">
-      <div id="bootTime" class="boot-time">--:--</div>
-      <div id="bootDate" class="boot-date">—</div>
-    </div>
+  <!-- Lockscreen -->
+  <main class="tab-lockscreen">
+    <div class="tab-lockscreen-inner">
+      <!-- Logo + clock -->
+      <div class="tab-brand-block">
+        <img src="strix-logo.png" alt="STRIX" class="tab-brand-img" />
+        <div id="bootTime" class="tab-brand-time">--:--</div>
+        <div id="bootDate" class="tab-brand-date">—</div>
+      </div>
 
-    <section class="login-card tablet-card">
-      <header class="login-header">
-        <div class="login-logo">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <polygon points="32,4 58,18 58,46 32,60 6,46 6,18" stroke="#f4f4f6" stroke-width="1.5" stroke-linejoin="round"/>
-            <path d="M32 16 L36 28 L48 28 L38 36 L42 48 L32 40 L22 48 L26 36 L16 28 L28 28 Z" fill="#f4f4f6"/>
-          </svg>
-        </div>
-        <h1 class="brand">STRIX</h1>
-        <p class="login-tagline">Authentification requise</p>
-      </header>
-
-      <form id="loginForm" class="login-form" autocomplete="off">
-        <div class="field">
-          <span class="field-label">Nom de code</span>
-          <input type="text" id="username" name="username" placeholder="Votre nom de code" required />
-        </div>
-        <div class="field">
-          <span class="field-label">Code d'accès</span>
-          <input type="password" id="password" name="password" placeholder="********" required />
-        </div>
-
-        <div class="form-row">
-          <label class="checkbox">
+      <!-- Carte minimaliste -->
+      <section class="tab-loginbox">
+        <p class="tab-loginbox-tag">Authentification requise</p>
+        <form id="loginForm" autocomplete="off" class="tab-loginbox-form">
+          <input type="text" id="username" name="username" placeholder="Nom de code" required autocomplete="username" />
+          <input type="password" id="password" name="password" placeholder="Code d'accès" required autocomplete="current-password" />
+          <label class="tab-remember">
             <input type="checkbox" id="remember" />
-            <span>MÉMORISER SESSION</span>
+            <span>Mémoriser</span>
           </label>
-          <span class="security-tag">[ SECURE CHANNEL ]</span>
-        </div>
-
-        <button type="submit" class="btn-primary tablet-unlock-btn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          Déverrouiller le terminal
-        </button>
-
-        <p id="loginError" class="error-msg" hidden></p>
-      </form>
-
-      <footer class="login-footer">
-        <span>TERMINAL v2.4.1</span>
-        <span class="status"><i class="dot"></i> RÉSEAU OPÉRATIONNEL</span>
-      </footer>
-    </section>
-
-    <div class="tablet-hint">
-      <span class="tablet-hint-line">Drui / strix2025 — Colonel par défaut</span>
+          <button type="submit" class="tab-unlock-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            Déverrouiller
+          </button>
+          <p id="loginError" class="tab-error" hidden></p>
+        </form>
+      </section>
     </div>
   </main>
 

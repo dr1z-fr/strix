@@ -171,8 +171,27 @@ select {
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(123, 224, 164, 0.15); } 50% { box-shadow: 0 0 0 7px rgba(123, 224, 164, 0.05); } }
 
 /* =================== DASHBOARD =================== */
-.dash-body { display: block; min-height: 100vh; }
+.dash-body {
+  display: flex; flex-direction: column;
+  height: 100vh; height: 100svh;
+  overflow: hidden;             /* pas de scroll global — tablette feel */
+  margin: 0; padding: 0;
+}
 .sidebar { display: none !important; }
+.dash-main {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+/* La topbar reste figée, seule la vue active scroll */
+.topbar { flex-shrink: 0; }
+.view {
+  flex: 1; min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 22px 28px 28px;
+}
+.view:not(.active) { display: none; }
 
 .sidebar {
   background: linear-gradient(180deg, var(--bg-2), var(--bg));
@@ -238,11 +257,9 @@ select {
 .icon-btn:hover { color: var(--fg); border-color: var(--border-2); background: var(--panel-2); }
 .icon-btn svg { width: 16px; height: 16px; }
 
-.dash-main { padding: 26px 32px 80px; overflow-x: hidden; }
-
 .topbar {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 24px; padding-bottom: 18px;
+  margin: 0; padding: 14px 28px;
   border-bottom: 1px solid var(--border);
 }
 .topbar h1 { font-size: 22px; letter-spacing: -0.02em; font-weight: 700; }
@@ -261,6 +278,7 @@ select {
 
 .view { display: none; flex-direction: column; gap: 20px; }
 .view.active { display: flex; }
+/* note: tablet shell rules override display logic for active view at top of file */
 
 /* Stats grid */
 .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
@@ -1044,117 +1062,215 @@ optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); l
 
 .mobile-only { display: none; }
 
-/* =================== LOGIN — TABLET BOOT LOCKSCREEN =================== */
-.login-body.tablet-boot {
-  display: block;
-  padding: 0;
+/* =================== LOGIN — TABLET LOCKSCREEN (minimal, no page scroll) =================== */
+body.tablet-boot {
+  height: 100vh;
+  height: 100svh;            /* small viewport, gère mieux mobile */
+  overflow: hidden;          /* pas de scroll page */
+  margin: 0; padding: 0;
   background: #050507;
+  display: flex; flex-direction: column;
+  position: relative;
 }
-.login-body.tablet-boot::before {
+body.tablet-boot::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
   background-image:
-    radial-gradient(circle at 20% 20%, rgba(123,224,164,0.06), transparent 40%),
+    radial-gradient(circle at 20% 25%, rgba(123,224,164,0.07), transparent 45%),
     radial-gradient(circle at 80% 80%, rgba(123,224,164,0.04), transparent 50%),
-    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 56px 56px, 56px 56px;
-  mask-image: radial-gradient(ellipse at center, black 35%, transparent 80%);
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 78%);
 }
 
-.tablet-statusbar {
-  position: fixed; top: 0; left: 0; right: 0;
+/* Status bar */
+.tab-statusbar {
+  flex-shrink: 0;
   display: flex; justify-content: space-between; align-items: center;
-  padding: 12px 24px;
+  padding: 10px 22px;
   border-bottom: 1px solid var(--border);
-  background: rgba(10,10,13,0.7);
+  background: rgba(10,10,13,0.6);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   z-index: 10;
 }
-.tablet-statusbar-left, .tablet-statusbar-right {
+.tab-statusbar-brand {
+  font-family: var(--display); font-size: 13px;
+  letter-spacing: 0.22em; font-weight: 700; color: var(--fg);
+}
+.tab-statusbar-meta {
   display: flex; align-items: center; gap: 14px;
+  font-family: var(--mono); font-size: 11px; color: var(--dim);
+  letter-spacing: 0.08em;
 }
-.tablet-statusbar-brand {
-  font-family: var(--display); font-size: 14px;
-  letter-spacing: 0.2em; font-weight: 700; color: var(--fg);
+.tab-statusbar-secure {
+  display: inline-flex; align-items: center; gap: 7px;
+  color: var(--ok); font-size: 10px; letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
-.tablet-statusbar-sub {
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--dim);
-}
-.tablet-statusbar-status {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
-  text-transform: uppercase; color: var(--ok);
-}
-.tablet-statusbar-clock {
-  font-family: var(--mono); font-size: 12px;
-  letter-spacing: 0.08em; color: var(--fg);
-}
+.tab-statusbar-meta #bootClock { color: var(--fg); }
 
-.tablet-lockscreen {
-  min-height: 100vh;
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center;
-  gap: 24px;
-  padding: 80px 24px 40px;
-  max-width: 520px; margin: 0 auto;
+/* Lockscreen — fills remaining space */
+.tab-lockscreen {
+  flex: 1; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
   position: relative; z-index: 1;
 }
+.tab-lockscreen-inner {
+  width: 100%; max-width: 380px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 28px;
+}
 
-.boot-clock { text-align: center; }
-.boot-time {
-  font-family: var(--display); font-size: 78px;
+/* Brand block (logo + clock) */
+.tab-brand-block {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px;
+}
+.tab-brand-img {
+  width: 140px; height: auto;
+  display: block; margin-bottom: 6px;
+  filter: drop-shadow(0 8px 32px rgba(123,224,164,0.22));
+}
+.tab-brand-time {
+  font-family: var(--display); font-size: 44px;
   font-weight: 200; letter-spacing: 0.04em;
   color: var(--fg); line-height: 1;
-  text-shadow: 0 0 40px rgba(123,224,164,0.1);
 }
-.boot-date {
-  margin-top: 6px;
-  font-family: var(--mono); font-size: 12px;
+.tab-brand-date {
+  font-family: var(--mono); font-size: 10.5px;
   letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim);
 }
 
-.login-card.tablet-card {
+/* Login box minimal */
+.tab-loginbox {
   width: 100%;
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(20,20,24,0.7), rgba(10,10,13,0.85));
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(20,20,24,0.55);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 22px 22px 18px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 18px 60px -20px rgba(0,0,0,0.8);
 }
-.login-tagline {
-  margin: 10px 0 0;
-  font-family: var(--mono); font-size: 11px;
-  letter-spacing: 0.18em; text-transform: uppercase;
+.tab-loginbox-tag {
+  margin: 0 0 14px;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.2em; text-transform: uppercase;
   color: var(--ok);
-}
-.tablet-unlock-btn {
-  width: 100%; justify-content: center;
-  padding: 14px; font-size: 13px;
-  letter-spacing: 0.14em;
-  display: inline-flex; align-items: center; gap: 10px;
-}
-
-.tablet-hint {
-  font-family: var(--mono); font-size: 10.5px;
-  letter-spacing: 0.1em; color: var(--dim-2);
   text-align: center;
 }
+.tab-loginbox-form {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.tab-loginbox-form input[type="text"],
+.tab-loginbox-form input[type="password"] {
+  width: 100%; box-sizing: border-box;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-family: var(--sans); font-size: 14px;
+  letter-spacing: 0.02em;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tab-loginbox-form input::placeholder {
+  color: var(--dim-2); letter-spacing: 0;
+}
+.tab-loginbox-form input:focus {
+  outline: none;
+  border-color: var(--ok);
+  background: rgba(0,0,0,0.55);
+  box-shadow: 0 0 0 3px rgba(123,224,164,0.12);
+}
+.tab-remember {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--dim);
+  cursor: pointer; user-select: none;
+  margin-top: 2px;
+}
+.tab-remember input[type="checkbox"] {
+  width: 14px; height: 14px;
+  accent-color: var(--ok);
+  cursor: pointer;
+}
+.tab-unlock-btn {
+  margin-top: 6px;
+  width: 100%; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 13px 16px;
+  background: var(--ok);
+  color: var(--bg);
+  border: none; border-radius: 10px;
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.tab-unlock-btn:hover {
+  background: #8eebac;
+  box-shadow: 0 6px 24px rgba(123,224,164,0.3);
+}
+.tab-unlock-btn:active { transform: translateY(1px); }
+.tab-unlock-btn:disabled {
+  opacity: 0.55; cursor: wait;
+}
+.tab-error {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  background: rgba(232,107,107,0.1);
+  border: 1px solid rgba(232,107,107,0.3);
+  border-radius: 8px;
+  color: #ff8b8b;
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+.tab-error[hidden] { display: none; }
 
-@media (max-width: 600px) {
-  .tablet-statusbar { padding: 10px 14px; }
-  .tablet-statusbar-sub { display: none; }
-  .boot-time { font-size: 54px; }
-  .tablet-lockscreen { padding-top: 70px; gap: 18px; }
+/* Compact heights */
+@media (max-height: 720px) {
+  .tab-brand-img { width: 110px; }
+  .tab-brand-time { font-size: 36px; }
+  .tab-lockscreen-inner { gap: 20px; }
+  .tab-loginbox { padding: 18px; }
+}
+@media (max-height: 580px) {
+  .tab-brand-img { width: 88px; }
+  .tab-brand-time { font-size: 28px; }
+  .tab-brand-date { font-size: 9.5px; }
+  .tab-lockscreen-inner { gap: 14px; }
+  .tab-loginbox-form { gap: 8px; }
+  .tab-loginbox-form input { padding: 10px 12px; font-size: 13px; }
+}
+@media (max-width: 480px) {
+  .tab-statusbar { padding: 9px 14px; }
+  .tab-statusbar-brand { font-size: 12px; }
+  .tab-lockscreen { padding: 16px; }
+  .tab-brand-img { width: 110px; }
 }
 
 /* =================== TABLET-STYLE TOPBAR =================== */
 .topbar-left {
   display: flex; align-items: center; gap: 16px; min-width: 0; flex: 1;
 }
-.topbar-title { min-width: 0; }
+.topbar-title {
+  min-width: 0;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
 .topbar-title h1 {
   margin: 0; font-family: var(--display); font-size: 22px;
   letter-spacing: 0.12em; text-transform: uppercase;
+}
+.topbar-title h1:empty { display: none; }
+.topbar-title .breadcrumb { width: 100%; flex-basis: 100%; margin-top: 2px; }
+.topbar-logo {
+  height: 36px; width: auto; display: block;
+  filter: drop-shadow(0 0 12px rgba(123,224,164,0.15));
 }
 .back-btn {
   display: inline-flex; align-items: center; gap: 8px;
@@ -1205,14 +1321,15 @@ optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); l
   border-radius: 18px;
   margin-bottom: 24px;
 }
-.home-hero-logo svg { width: 64px; height: 64px; }
-.home-hero-text h2 {
-  margin: 0; font-family: var(--display); font-size: 28px;
-  letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg);
+.home-hero-logo svg,
+.home-hero-logo img {
+  width: 88px; height: auto; display: block;
+  filter: drop-shadow(0 4px 28px rgba(123,224,164,0.2));
 }
 .home-hero-sub {
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em;
-  color: var(--dim); display: block; margin-top: 2px; font-weight: 400;
+  font-family: var(--display); font-size: 22px; font-weight: 600;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--fg); display: block;
 }
 .home-hero-text p {
   margin: 8px 0 0; font-size: 13px; color: var(--dim-2);
@@ -1476,8 +1593,8 @@ optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); l
 
   .mobile-only { display: flex; }
 
-  /* Main content — padding-bottom = bottom nav height + safe area */
-  .dash-main { padding: 16px 14px 86px; }
+  /* Mobile : view padding adapté */
+  .view { padding: 14px 14px 24px; }
 
   /* Topbar */
   .topbar { flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -1571,7 +1688,7 @@ optgroup option { font-family: var(--sans); font-size: 13px; color: var(--fg); l
   .nav-label { display: none; }
   .nav-item { padding: 10px 4px; min-width: 40px; }
   .nav-item svg { width: 22px; height: 22px; }
-  .dash-main { padding: 12px 10px 74px; }
+  .view { padding: 12px 10px 20px; }
   .topbar h1 { font-size: 16px; }
   .stats-row { grid-template-columns: repeat(2, 1fr); }
   .personnel-grid { grid-template-columns: 1fr 1fr; gap: 8px; }

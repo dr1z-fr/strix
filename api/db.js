@@ -215,18 +215,26 @@ export default async function handler(req, res) {
 
     // ===== INIT (single roundtrip — hot cache for the whole session) =====
     if (action === 'init') {
+      // Helper : retourne { rows: [] } si la table n'existe pas encore (avant migration).
+      const safe = (q) => db.query(q).catch(err => {
+        if (err && (err.code === '42P01' /* relation missing */ || err.code === '42703' /* column missing */)) {
+          console.warn('[api/db] init: table/column manquante, ignorée —', err.message);
+          return { rows: [] };
+        }
+        throw err;
+      });
       const [users, ops, absences, specs, trainings, certs, formations, holders, log, docs, sanctions] = await Promise.all([
-        db.query('SELECT id, name, grade, role, status, can_manage_ops, must_change_password, bio, joined_at, primary_spec FROM users ORDER BY id'),
-        db.query('SELECT * FROM ops ORDER BY date'),
-        db.query('SELECT * FROM absences ORDER BY ts DESC'),
-        db.query('SELECT * FROM specializations ORDER BY name'),
-        db.query('SELECT * FROM trainings ORDER BY date DESC'),
-        db.query('SELECT * FROM certifications ORDER BY code'),
-        db.query('SELECT * FROM formations ORDER BY date DESC'),
-        db.query('SELECT * FROM cert_holders ORDER BY awarded_at DESC'),
-        db.query('SELECT * FROM log ORDER BY ts DESC LIMIT 50'),
-        db.query('SELECT * FROM documents ORDER BY updated_at DESC'),
-        db.query('SELECT * FROM sanctions ORDER BY issued_at DESC'),
+        safe('SELECT * FROM users ORDER BY id'),
+        safe('SELECT * FROM ops ORDER BY date'),
+        safe('SELECT * FROM absences ORDER BY ts DESC'),
+        safe('SELECT * FROM specializations ORDER BY name'),
+        safe('SELECT * FROM trainings ORDER BY date DESC'),
+        safe('SELECT * FROM certifications ORDER BY code'),
+        safe('SELECT * FROM formations ORDER BY date DESC'),
+        safe('SELECT * FROM cert_holders ORDER BY awarded_at DESC'),
+        safe('SELECT * FROM log ORDER BY ts DESC LIMIT 50'),
+        safe('SELECT * FROM documents ORDER BY updated_at DESC'),
+        safe('SELECT * FROM sanctions ORDER BY issued_at DESC'),
       ]);
       return res.json({
         me: meCam,
