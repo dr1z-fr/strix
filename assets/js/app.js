@@ -375,6 +375,8 @@ function renderOps() {
         body.innerHTML = renderCard(op);
         body.hidden = false;
         row.classList.add('open');
+        // Lie les handlers de la carte fraîchement injectée (déverrouiller / supprimer / notes…)
+        bindOpCardActions(body);
       } else {
         body.hidden = true;
         body.innerHTML = '';
@@ -383,7 +385,14 @@ function renderOps() {
     });
   });
 
-  list.querySelectorAll('[data-presence]').forEach(cb => {
+  bindOpCardActions(list);
+}
+
+// Attache tous les handlers d'une op-card (présence, roster, validation, suppression, notes).
+// Appelé sur la liste principale ET sur chaque carte d'op archivée ouverte lazily.
+function bindOpCardActions(scope) {
+  const list = $('opsList');
+  scope.querySelectorAll('[data-presence]').forEach(cb => {
     cb.addEventListener('change', (e) => {
       const opId = e.target.dataset.presence;
       const op = db.ops.find(opId);
@@ -396,7 +405,7 @@ function renderOps() {
       renderAll();
     });
   });
-  list.querySelectorAll('[data-roster]').forEach(cb => {
+  scope.querySelectorAll('[data-roster]').forEach(cb => {
     cb.addEventListener('change', (e) => {
       if (!isLeader) return;
       const opId = e.target.dataset.roster;
@@ -412,7 +421,7 @@ function renderOps() {
       renderAll();
     });
   });
-  list.querySelectorAll('[data-validate]').forEach(b => {
+  scope.querySelectorAll('[data-validate]').forEach(b => {
     b.addEventListener('click', () => {
       const op = db.ops.find(b.dataset.validate);
       db.ops.update(op.id, { validated: true, validatedBy: me.id });
@@ -421,7 +430,7 @@ function renderOps() {
       renderAll();
     });
   });
-  list.querySelectorAll('[data-unvalidate]').forEach(b => {
+  scope.querySelectorAll('[data-unvalidate]').forEach(b => {
     b.addEventListener('click', () => {
       const op = db.ops.find(b.dataset.unvalidate);
       db.ops.update(op.id, { validated: false, validatedBy: null });
@@ -429,7 +438,7 @@ function renderOps() {
       renderAll();
     });
   });
-  list.querySelectorAll('[data-delete]').forEach(b => {
+  scope.querySelectorAll('[data-delete]').forEach(b => {
     b.addEventListener('click', async () => {
       const op = db.ops.find(b.dataset.delete);
       if (!await confirmDialog('Suppression', `Supprimer l'opération <strong>${op.name}</strong> ?`)) return;
@@ -441,7 +450,7 @@ function renderOps() {
   });
 
   // ===== Notes du gérant d'op =====
-  list.querySelectorAll('[data-edit-note]').forEach(b => {
+  scope.querySelectorAll('[data-edit-note]').forEach(b => {
     b.addEventListener('click', () => {
       if (!isLeader) return;
       const opId = b.dataset.editNote;
@@ -451,7 +460,7 @@ function renderOps() {
       if (body) body.style.display = 'none';
     });
   });
-  list.querySelectorAll('[data-cancel-note]').forEach(b => {
+  scope.querySelectorAll('[data-cancel-note]').forEach(b => {
     b.addEventListener('click', () => {
       const opId = b.dataset.cancelNote;
       const editor = $(`op-notes-edit-${opId}`);
@@ -460,7 +469,7 @@ function renderOps() {
       if (body) body.style.display = '';
     });
   });
-  list.querySelectorAll('[data-save-note]').forEach(b => {
+  scope.querySelectorAll('[data-save-note]').forEach(b => {
     b.addEventListener('click', async () => {
       if (!isLeader) return;
       const opId = b.dataset.saveNote;
@@ -474,7 +483,7 @@ function renderOps() {
       renderAll();
     });
   });
-  list.querySelectorAll('[data-clear-note]').forEach(b => {
+  scope.querySelectorAll('[data-clear-note]').forEach(b => {
     b.addEventListener('click', async () => {
       if (!isLeader) return;
       const opId = b.dataset.clearNote;
